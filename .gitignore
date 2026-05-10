@@ -1,0 +1,45 @@
+# 构建产物
+build/
+dist/
+out/
+*.o
+*.obj
+
+# IDE
+.vscode/
+.idea/
+*.user
+*.user.*
+CMakeUserPresets.json
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Qt
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+
+# macOS
+.DS_Store
+*.app
+*.dSYM/
+
+# Windows
+*.exe
+*.dll
+*.pdb
+
+# 数据库
+*.db
+*.db-shm
+*.db-wal
+
+# 临时
+*.swp
+*~
+.cache/

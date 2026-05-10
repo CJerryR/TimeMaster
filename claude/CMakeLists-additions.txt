@@ -1,0 +1,49 @@
+# ============================================================
+# CMakeLists.txt — 应用到 timeplan-cpp 的修改片段
+# 把以下内容合并进现有 CMakeLists.txt
+# ============================================================
+
+# 1) 在 set(CMAKE_AUTOMOC ON) 之后，project name 可以一起改：
+project(Cadence VERSION 0.2.0 LANGUAGES CXX)
+
+# 2) 把新组件加入源文件列表（在 add_executable 调用之前的 SOURCES 变量里）
+list(APPEND PROJECT_SOURCES
+    src/ui/widgets/StatsCardsWidget.h
+    src/ui/widgets/StatsCardsWidget.cpp
+    src/ui/widgets/HorizontalBarChart.h
+    src/ui/widgets/HorizontalBarChart.cpp
+    src/ui/widgets/DailyTrendChart.h
+    src/ui/widgets/DailyTrendChart.cpp
+    src/ui/widgets/InsightsWidget.h
+    src/ui/widgets/InsightsWidget.cpp
+    src/ui/widgets/RhythmCardWidget.h
+    src/ui/widgets/RhythmCardWidget.cpp
+    src/ui/widgets/SourceDistributionWidget.h
+    src/ui/widgets/SourceDistributionWidget.cpp
+)
+
+# 3) AnalyticsPage.h / AnalyticsPage.cpp 已存在，直接覆盖即可
+
+# 4) Mac 应用名/图标：在 set_target_properties 那里改
+if(APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME           "Cadence"
+        MACOSX_BUNDLE_GUI_IDENTIFIER        "app.cadence.desktop"
+        MACOSX_BUNDLE_BUNDLE_VERSION        "0.2.0"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING  "0.2.0"
+        MACOSX_BUNDLE_ICON_FILE             "icon.icns"
+    )
+
+    # 把图标放进 .app/Contents/Resources/
+    set(APP_ICON "${CMAKE_SOURCE_DIR}/build/icon.icns")
+    if(EXISTS "${APP_ICON}")
+        target_sources(${PROJECT_NAME} PRIVATE "${APP_ICON}")
+        set_source_files_properties("${APP_ICON}" PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources")
+    else()
+        message(WARNING
+            "icon.icns 还没生成。先在项目根目录跑 ./scripts/make_icns.sh，"
+            "然后重新 cmake。")
+    endif()
+endif()
