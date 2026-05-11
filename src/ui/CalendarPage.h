@@ -8,7 +8,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 
-namespace timeplan {
+namespace timemaster {
 
 class Database;
 class DeepSeekClient;
@@ -39,6 +39,7 @@ private slots:
     void onTimeSlotClicked(const QDateTime &dt);
     void onMonthDateClicked(const QDate &d);
     void onMonthOverflowClicked(const QDate &d, const QList<CalendarEvent> &events);
+    void onHistoryClicked();
 
     void applyTheme();
 
@@ -53,6 +54,7 @@ private:
     CalendarView m_view = CalendarView::Month;
     QDate m_currentDate;
     QList<CalendarEvent> m_events;
+    QString m_pendingParseText;     // 最近一次解析的原始文本（用于建 batch）
 
     // header
     QLabel *m_titleLabel;
@@ -63,6 +65,7 @@ private:
     // ai input
     QLineEdit *m_parseInput;
     QPushButton *m_parseButton;
+    QPushButton *m_historyButton;
     QLabel *m_parseStatus;
 
     QStackedWidget *m_stack;
@@ -71,4 +74,4 @@ private:
     TimeGridView *m_dayView;
 };
 
-} // namespace timeplan
+} // namespace timemaster

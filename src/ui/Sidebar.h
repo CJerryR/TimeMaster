@@ -7,14 +7,14 @@ class QPushButton;
 class QLabel;
 class QVBoxLayout;
 
-namespace timeplan {
+namespace timemaster {
 
 /**
  * 左侧导航栏
- * - 顶部 Logo (时)
- * - 三个导航项：日历 / 分析 / 对话
- * - 底部：主题切换 + 设置
- * - 可折叠 (窄宽模式仅显示图标)
+ *  - 顶部 Logo
+ *  - 三个导航项：日历 / 分析 / 对话
+ *  - 底部：主题切换 + 设置
+ *  - 半透明背景，让主窗口的渐变隐隐透出
  */
 class Sidebar : public QWidget {
     Q_OBJECT
@@ -27,7 +27,7 @@ public:
     NavItem currentItem() const { return m_current; }
 
 signals:
-    void navigated(int index);          // 切换页面
+    void navigated(int index);
     void themeToggleRequested();
     void settingsRequested();
 
@@ -37,7 +37,6 @@ private slots:
 
 private:
     QPushButton *makeNavButton(const QString &icon, const QString &label);
-    void updateButtonStyles();
 
     QLabel *m_logo = nullptr;
     QVector<QPushButton*> m_navButtons;
@@ -46,4 +45,4 @@ private:
     NavItem m_current = Calendar;
 };
 
-} // namespace timeplan
+} // namespace timemaster

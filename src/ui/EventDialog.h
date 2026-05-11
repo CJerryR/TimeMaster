@@ -12,17 +12,8 @@ class QSpinBox;
 class QButtonGroup;
 class QPushButton;
 
-namespace timeplan {
+namespace timemaster {
 
-/**
- * 新建/编辑事件
- * - 创建模式：传入选中日期
- * - 编辑模式：传入已有事件
- * 优化点：
- *   - 颜色选择改为 12 个圆形色块，点击切换，比原版下拉选择器直观
- *   - 类别 + 优先级用胶囊式 toggle button
- *   - 全天勾选时自动隐藏时间字段
- */
 class EventDialog : public QDialog {
     Q_OBJECT
 public:
@@ -54,9 +45,10 @@ private:
 
     bool m_isEditing = false;
     QString m_eventId;
+    QString m_aiBatchId;
+    EventSource m_source = EventSource::Manual;
     QDateTime m_createdAt;
 
-    // UI
     QLineEdit *m_titleEdit;
     QLineEdit *m_locationEdit;
     QPlainTextEdit *m_descriptionEdit;
@@ -78,4 +70,4 @@ private:
     EventColor m_selectedColor = EventColor::Blue;
 };
 
-} // namespace timeplan
+} // namespace timemaster

@@ -8,12 +8,13 @@
 #include <QPainterPath>
 #include <algorithm>
 
-namespace timeplan {
+namespace timemaster {
 
 TimeGridView::TimeGridView(Mode mode, QWidget *parent)
     : QWidget(parent), m_mode(mode)
 {
     setMouseTracking(true);
+    setAttribute(Qt::WA_StyledBackground, false);
     m_currentDate = QDate::currentDate();
     m_contentHeight = m_hourHeight * 24;
 
@@ -52,9 +53,7 @@ QList<QDate> TimeGridView::visibleDays() const {
     return days;
 }
 
-void TimeGridView::onMinuteTick() {
-    update();
-}
+void TimeGridView::onMinuteTick() { update(); }
 
 void TimeGridView::rebuildLayout() {
     m_eventRects.clear();
@@ -63,7 +62,6 @@ void TimeGridView::rebuildLayout() {
     auto days = visibleDays();
     int nDays = days.size();
 
-    // 全天事件占据顶部带：每行 24px，最多 3 行
     int allDayMaxRows = 0;
     for (const auto &d : days) {
         int n = 0;
@@ -79,7 +77,6 @@ void TimeGridView::rebuildLayout() {
     int gridTop = m_headerHeight + m_allDayBandHeight;
     double colW = double(width() - gridLeft) / nDays;
 
-    // 全天事件的位置
     for (int di = 0; di < nDays; ++di) {
         const auto d = days[di];
         QList<CalendarEvent> allDay;
@@ -96,7 +93,6 @@ void TimeGridView::rebuildLayout() {
         }
     }
 
-    // 时间事件
     for (int di = 0; di < nDays; ++di) {
         QRect dayCol(int(gridLeft + di * colW), gridTop,
                      int(colW), m_contentHeight);
@@ -124,7 +120,6 @@ QList<TimeGridView::EventLayout> TimeGridView::layoutDayEvents(const QDate &date
                   return a.endDate > b.endDate;
               });
 
-    // 列分配（贪心：找一列其最后一个事件结束 <= 当前事件开始）
     QList<QList<int>> columns;
     QList<int> assigned(dayEvents.size(), -1);
 
@@ -141,12 +136,11 @@ QList<TimeGridView::EventLayout> TimeGridView::layoutDayEvents(const QDate &date
             }
         }
         if (!placed) {
-            columns.append({i});
+            columns.append(QList<int>{i});
             assigned[i] = columns.size() - 1;
         }
     }
 
-    // 计算每个事件的并列总数（其所有重叠事件中所占的最大列数）
     auto overlapping = [&](int idx) {
         QList<int> ov;
         ov.append(idx);
@@ -199,7 +193,7 @@ void TimeGridView::paintEvent(QPaintEvent *) {
     auto &theme = Theme::instance();
     auto pal = theme.palette();
 
-    p.fillRect(rect(), theme.bgPage());
+    p.fillRect(rect(), Qt::transparent);
 
     auto days = visibleDays();
     int nDays = days.size();
@@ -209,11 +203,12 @@ void TimeGridView::paintEvent(QPaintEvent *) {
 
     QDate today = QDate::currentDate();
 
-    // 头部背景
+    // 头部背景（半透明，让卡片背景透出）
     QRect headRect(0, 0, width(), m_headerHeight);
-    p.fillRect(headRect, theme.bgContainer());
+    QColor headBg = theme.bgContainer();
+    headBg.setAlphaF(0.5);
+    p.fillRect(headRect, headBg);
 
-    // 周表头
     static const char *weekdays[] = {"周日","周一","周二","周三","周四","周五","周六"};
     for (int i = 0; i < nDays; ++i) {
         QRect col(int(gridLeft + i * colW), 0, int(colW), m_headerHeight);
@@ -230,9 +225,8 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         p.setFont(f2);
 
         if (isToday) {
-            // 圆形 today 背景
-            int diam = 30;
-            QRect circle(col.center().x() - diam / 2, 26, diam, diam);
+            int diam = 32;
+            QRect circle(col.center().x() - diam / 2, 24, diam, diam);
             p.setBrush(theme.brand());
             p.setPen(Qt::NoPen);
             p.drawEllipse(circle);
@@ -246,14 +240,14 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         }
     }
 
-    // 头部底部分隔线
     p.setPen(theme.stroke());
     p.drawLine(0, m_headerHeight, width(), m_headerHeight);
 
-    // 全天事件带背景
     if (m_allDayBandHeight > 0) {
         QRect bandR(0, m_headerHeight, width(), m_allDayBandHeight);
-        p.fillRect(bandR, theme.bgContainer());
+        QColor bandC = theme.bgContainer();
+        bandC.setAlphaF(0.3);
+        p.fillRect(bandR, bandC);
         p.drawLine(0, m_headerHeight + m_allDayBandHeight,
                    width(), m_headerHeight + m_allDayBandHeight);
 
@@ -264,7 +258,6 @@ void TimeGridView::paintEvent(QPaintEvent *) {
                    Qt::AlignLeft | Qt::AlignVCenter, "全天");
     }
 
-    // 时间标尺 + 网格
     p.save();
     QRect gridArea(0, gridTop, width(), height() - gridTop);
     p.setClipRect(gridArea);
@@ -275,25 +268,21 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         int y = gridTop + h * m_hourHeight - m_scrollY;
         if (y < gridTop || y > height()) continue;
 
-        // 横线
         p.setPen(QPen(theme.stroke(), 1));
         p.drawLine(m_timeGutter, y, width(), y);
 
-        // 时间标签
         p.setPen(theme.textPlaceholder());
         QString label = QString("%1:00").arg(h, 2, 10, QChar('0'));
         p.drawText(QRect(0, y - 8, m_timeGutter - 8, 16),
                    Qt::AlignRight | Qt::AlignVCenter, label);
     }
 
-    // 日列分隔线
     p.setPen(QPen(theme.stroke(), 1));
     for (int i = 0; i <= nDays; ++i) {
         int x = int(gridLeft + i * colW);
         p.drawLine(x, gridTop - m_allDayBandHeight, x, height());
     }
 
-    // 当天背景高亮
     if (m_mode == WeekMode) {
         for (int i = 0; i < nDays; ++i) {
             if (days[i] == today) {
@@ -308,17 +297,12 @@ void TimeGridView::paintEvent(QPaintEvent *) {
 
     p.restore();
 
-    // 事件
     for (const auto &er : m_eventRects) {
         QRect r = er.rect;
-        // 时间事件需要应用 scroll
         if (!er.event.allDay) {
             r.translate(0, -m_scrollY);
             if (r.bottom() < gridTop || r.top() > height()) continue;
-            // 上下被头部裁掉
-            if (r.top() < gridTop) {
-                r.setTop(gridTop);
-            }
+            if (r.top() < gridTop) r.setTop(gridTop);
         }
         auto &c = pal[er.event.color];
 
@@ -326,11 +310,9 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         path.addRoundedRect(r, 6, 6);
         p.fillPath(path, c.bg);
 
-        // 左侧色条
         QRect bar(r.left(), r.top(), 3, r.height());
         p.fillRect(bar, c.text);
 
-        // 文本
         QRect tr(r.left() + 8, r.top() + 4, r.width() - 12, r.height() - 6);
         p.setPen(c.text);
 
@@ -351,7 +333,6 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         }
     }
 
-    // "现在" 红线
     QDate now = QDate::currentDate();
     QTime nt = QTime::currentTime();
     bool drawNow = false;
@@ -365,11 +346,9 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         if (y > gridTop && y < height()) {
             int xL = (m_mode == DayMode) ? gridLeft : int(gridLeft + nowCol * colW);
             int xR = (m_mode == DayMode) ? width() : int(gridLeft + (nowCol + 1) * colW);
-            // 红色圆点
             p.setBrush(theme.nowLine());
             p.setPen(Qt::NoPen);
             p.drawEllipse(QPoint(xL, y), 4, 4);
-            // 红线
             p.setPen(QPen(theme.nowLine(), 2));
             p.drawLine(xL + 4, y, xR, y);
         }
@@ -383,7 +362,6 @@ void TimeGridView::resizeEvent(QResizeEvent *) {
 
 void TimeGridView::mousePressEvent(QMouseEvent *e) {
     if (e->button() != Qt::LeftButton) return;
-
     for (const auto &er : m_eventRects) {
         QRect r = er.rect;
         if (!er.event.allDay) r.translate(0, -m_scrollY);
@@ -441,8 +419,6 @@ void TimeGridView::wheelEvent(QWheelEvent *e) {
     e->accept();
 }
 
-void TimeGridView::leaveEvent(QEvent *) {
-    QToolTip::hideText();
-}
+void TimeGridView::leaveEvent(QEvent *) { QToolTip::hideText(); }
 
-} // namespace timeplan
+} // namespace timemaster

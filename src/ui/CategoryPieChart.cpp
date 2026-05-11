@@ -6,7 +6,7 @@
 #include <QPainterPath>
 #include <QtMath>
 
-namespace timeplan {
+namespace timemaster {
 
 CategoryPieChart::CategoryPieChart(QWidget *parent) : QWidget(parent) {
     setMinimumSize(200, 200);
@@ -67,4 +67,4 @@ void CategoryPieChart::paintEvent(QPaintEvent *) {
     p.drawEllipse(inner);
 }
 
-} // namespace timeplan
+} // namespace timemaster

@@ -12,16 +12,17 @@
 #include <QDir>
 #include <QStandardPaths>
 
-int main(int argc, char* argv [ ]) {
+int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
 
-    // ---- 应用元信息 (QSettings 用于此) ----
-    QApplication::setApplicationName("TimeplanCpp");
-    QApplication::setApplicationDisplayName("时智");
-    QApplication::setOrganizationName("TimeplanCpp");
-    QApplication::setApplicationVersion("1.0.0");
+    // ---- 应用元信息（QSettings 持久化用） ----
+    QApplication::setApplicationName("TimeMaster");
+    QApplication::setApplicationDisplayName("时间管理大师");
+    QApplication::setOrganizationName("TimeMaster");
+    QApplication::setOrganizationDomain("timemaster.local");
+    QApplication::setApplicationVersion("2.0.0");
 
-    // ---- 字体（macOS 优先使用 PingFang SC，Windows 优先微软雅黑） ----
+    // ---- 字体 ----
 #ifdef Q_OS_MAC
     QFont f("PingFang SC", 13);
 #elif defined(Q_OS_WIN)
@@ -29,29 +30,33 @@ int main(int argc, char* argv [ ]) {
 #else
     QFont f("Noto Sans CJK SC", 10);
 #endif
+    f.setHintingPreference(QFont::PreferFullHinting);
+    f.setStyleStrategy(QFont::PreferAntialias);
     app.setFont(f);
 
     // ---- 数据库 ----
-    timeplan::Database db;
+    timemaster::Database db;
     if (!db.open()) {
-        QMessageBox::critical(nullptr, "时智",
+        QMessageBox::critical(nullptr, "时间管理大师",
             QString("数据库初始化失败。\n路径：%1").arg(db.filePath()));
         return 1;
     }
 
-    // ---- 客户端 ----
-    timeplan::DeepSeekClient ai;
+    // ---- AI 客户端 ----
+    timemaster::DeepSeekClient ai;
     QSettings settings;
     QString savedKey = settings.value("deepseek_api_key").toString();
     if (!savedKey.isEmpty()) {
         ai.setApiKey(savedKey);
     }
+    QString savedBase = settings.value("api_base_url").toString();
+    if (!savedBase.isEmpty()) ai.setBaseUrl(savedBase);
+    QString savedModel = settings.value("api_model").toString();
+    if (!savedModel.isEmpty()) ai.setModel(savedModel);
 
-    // ---- 主题（自动从 QSettings 恢复，构造时已处理） ----
-    timeplan::Theme::instance();
+    timemaster::Theme::instance();
 
-    // ---- 主窗口 ----
-    timeplan::MainWindow w(&db, &ai);
+    timemaster::MainWindow w(&db, &ai);
     w.show();
 
     return app.exec();

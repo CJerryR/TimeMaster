@@ -3,14 +3,8 @@
 #include "../core/Types.h"
 #include <QWidget>
 
-namespace timeplan {
+namespace timemaster {
 
-/**
- * 月视图（自绘）
- * - 6 行 × 7 列网格
- * - 每个单元格显示日期 + 至多 N 条事件，多余以 "+N 更多" 显示
- * - 鼠标悬浮高亮、点击单元格新建、点击事件编辑
- */
 class MonthView : public QWidget {
     Q_OBJECT
 public:
@@ -62,4 +56,4 @@ private:
     int m_hoverIndex = -1;
 };
 
-} // namespace timeplan
+} // namespace timemaster

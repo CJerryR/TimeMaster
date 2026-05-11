@@ -7,18 +7,19 @@
 #include <QToolTip>
 #include <QtMath>
 
-namespace timeplan {
+namespace timemaster {
 
 namespace {
-constexpr int HEADER_HEIGHT = 28;
+constexpr int HEADER_HEIGHT = 32;
 constexpr int CELL_PADDING = 4;
-constexpr int EVENT_BAR_HEIGHT = 18;
-constexpr int EVENT_BAR_GAP = 2;
-constexpr int DATE_TEXT_HEIGHT = 30;
+constexpr int EVENT_BAR_HEIGHT = 19;
+constexpr int EVENT_BAR_GAP = 3;
+constexpr int DATE_TEXT_HEIGHT = 32;
 }
 
 MonthView::MonthView(QWidget *parent) : QWidget(parent) {
     setMouseTracking(true);
+    setAttribute(Qt::WA_StyledBackground, false);
     m_currentDate = QDate::currentDate();
 }
 
@@ -37,11 +38,9 @@ void MonthView::setEvents(const QList<CalendarEvent> &events) {
 QList<QDate> MonthView::buildDays() const {
     QList<QDate> days;
     QDate firstOfMonth(m_currentDate.year(), m_currentDate.month(), 1);
-    int dayOfWeek = firstOfMonth.dayOfWeek() % 7; // 周日=0
+    int dayOfWeek = firstOfMonth.dayOfWeek() % 7;
     QDate gridStart = firstOfMonth.addDays(-dayOfWeek);
-    for (int i = 0; i < 42; ++i) {
-        days << gridStart.addDays(i);
-    }
+    for (int i = 0; i < 42; ++i) days << gridStart.addDays(i);
     return days;
 }
 
@@ -52,7 +51,6 @@ QList<CalendarEvent> MonthView::eventsForDay(const QDate &d) const {
         QDate end = e.endDate.date();
         if (d >= s && d <= end) list.append(e);
     }
-    // 全天优先，再按开始时间
     std::sort(list.begin(), list.end(), [](const CalendarEvent &a, const CalendarEvent &b) {
         if (a.allDay != b.allDay) return a.allDay > b.allDay;
         return a.startDate < b.startDate;
@@ -91,7 +89,6 @@ void MonthView::rebuildLayout() {
             cell.isToday = (d == today);
             m_cells.append(cell);
 
-            // 事件最多显示 N 条
             QList<CalendarEvent> dayEvents = eventsForDay(d);
             int maxSlots = qMax(0, (r.height() - DATE_TEXT_HEIGHT - CELL_PADDING * 2)
                                 / (EVENT_BAR_HEIGHT + EVENT_BAR_GAP));
@@ -130,7 +127,8 @@ void MonthView::paintEvent(QPaintEvent *) {
     auto &theme = Theme::instance();
     auto pal = theme.palette();
 
-    p.fillRect(rect(), theme.bgPage());
+    // 透明背景（让上层卡片背景透出）
+    p.fillRect(rect(), Qt::transparent);
 
     // 周表头
     static const char *weekdays[] = {"日","一","二","三","四","五","六"};
@@ -147,15 +145,11 @@ void MonthView::paintEvent(QPaintEvent *) {
         p.drawText(r, Qt::AlignCenter, weekdays[i]);
     }
 
-    // 表头底部分隔线
     p.setPen(theme.stroke());
     p.drawLine(0, HEADER_HEIGHT, width(), HEADER_HEIGHT);
 
-    if (m_cells.isEmpty()) {
-        rebuildLayout();
-    }
+    if (m_cells.isEmpty()) rebuildLayout();
 
-    // 单元格
     QFont dateFont = font();
     dateFont.setPointSize(11);
     QFont dateBigFont = font();
@@ -165,25 +159,22 @@ void MonthView::paintEvent(QPaintEvent *) {
     for (int i = 0; i < m_cells.size(); ++i) {
         const auto &cell = m_cells[i];
 
-        // 单元格背景
         if (cell.isToday) {
             p.fillRect(cell.rect, theme.todayHighlight());
         } else if (i == m_hoverIndex) {
             p.fillRect(cell.rect, theme.bgHover());
         }
 
-        // 网格线
         p.setPen(QPen(theme.stroke(), 1));
         p.drawLine(cell.rect.right(), cell.rect.top(),
                    cell.rect.right(), cell.rect.bottom());
         p.drawLine(cell.rect.left(), cell.rect.bottom(),
                    cell.rect.right(), cell.rect.bottom());
 
-        // 日期数字
-        QRect dateRect(cell.rect.left() + 6,
-                       cell.rect.top() + 4,
-                       cell.rect.width() - 12,
-                       DATE_TEXT_HEIGHT - 4);
+        QRect dateRect(cell.rect.left() + 8,
+                       cell.rect.top() + 6,
+                       cell.rect.width() - 16,
+                       DATE_TEXT_HEIGHT - 6);
 
         QColor dateColor;
         if (cell.isToday) {
@@ -198,9 +189,9 @@ void MonthView::paintEvent(QPaintEvent *) {
 
         if (cell.isToday) {
             p.setFont(dateBigFont);
-            // 圆形 today 高亮
-            int diam = 22;
-            QRect circle(dateRect.left(), dateRect.top() + (dateRect.height() - diam) / 2, diam, diam);
+            int diam = 24;
+            QRect circle(dateRect.left(), dateRect.top() + (dateRect.height() - diam) / 2,
+                        diam, diam);
             p.setBrush(theme.brand());
             p.setPen(Qt::NoPen);
             p.drawEllipse(circle);
@@ -221,14 +212,12 @@ void MonthView::paintEvent(QPaintEvent *) {
     for (const auto &er : m_eventRects) {
         auto &c = pal[er.event.color];
         QPainterPath path;
-        path.addRoundedRect(er.rect, 4, 4);
+        path.addRoundedRect(er.rect, 5, 5);
         p.fillPath(path, c.bg);
 
-        // 左侧色条
         QRect bar(er.rect.left(), er.rect.top(), 3, er.rect.height());
         p.fillRect(bar, c.text);
 
-        // 文字
         QRect tr(er.rect.left() + 8, er.rect.top(),
                  er.rect.width() - 12, er.rect.height());
         p.setPen(c.text);
@@ -242,7 +231,6 @@ void MonthView::paintEvent(QPaintEvent *) {
         p.drawText(tr, Qt::AlignLeft | Qt::AlignVCenter, label);
     }
 
-    // 溢出 +N
     p.setPen(theme.textSecondary());
     QFont moreFont = font();
     moreFont.setPointSize(10);
@@ -265,16 +253,12 @@ void MonthView::paintEvent(QPaintEvent *) {
 
 void MonthView::mousePressEvent(QMouseEvent *e) {
     if (e->button() != Qt::LeftButton) return;
-
-    // 优先检查事件
     for (const auto &er : m_eventRects) {
         if (er.rect.contains(e->pos())) {
             emit eventClicked(er.event);
             return;
         }
     }
-
-    // 检查溢出按钮
     for (const auto &o : m_overflowRects) {
         if (o.rect.contains(e->pos())) {
             emit overflowClicked(o.date, o.events);
@@ -303,7 +287,6 @@ void MonthView::mouseMoveEvent(QMouseEvent *e) {
         update();
     }
 
-    // tooltip for events
     for (const auto &er : m_eventRects) {
         if (er.rect.contains(e->pos())) {
             QString tip = er.event.title;
@@ -327,4 +310,4 @@ void MonthView::resizeEvent(QResizeEvent *) {
     rebuildLayout();
 }
 
-} // namespace timeplan
+} // namespace timemaster
