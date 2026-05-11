@@ -19,6 +19,9 @@ public:
     void setDailyAvg(qint64 minutes);
     void setPeakDay(const QDate &date);
 
+private slots:
+    void applyTheme();
+
 private:
     struct Card {
         QFrame *frame = nullptr;
@@ -30,6 +33,12 @@ private:
     Card m_countCard;
     Card m_avgCard;
     Card m_peakCard;
+
+    // 记下最近一次设置的内容，主题切换后重新应用样式
+    qint64 m_lastTotal = 0;
+    int    m_lastCount = 0;
+    qint64 m_lastAvg = 0;
+    QDate  m_lastPeak;
 
     void setupCard(Card &card, const QString &caption, QBoxLayout *row);
     void applyCardStyle(Card &card);

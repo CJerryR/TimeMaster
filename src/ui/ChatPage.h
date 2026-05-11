@@ -57,6 +57,7 @@ private:
     QCheckBox *m_useCtxCheck;
     QLabel *m_ctxStatus;
     QLabel *m_emptyHint;
+    QLabel *m_titleIcon = nullptr;
 
     QLabel *m_currentStreamingBubble = nullptr;
     QString m_streamingText;

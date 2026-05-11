@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(TimeMaster VERSION 2.0.0 LANGUAGES CXX)
+project(TimeMaster VERSION 3.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,6 +34,16 @@ set(APP_SOURCES
     src/core/DeepSeekClient.h
     src/core/DeepSeekClient.cpp
 
+    # Utils
+    src/utils/MarkdownToHtml.h
+    src/utils/MarkdownToHtml.cpp
+
+    # UI infra (字体 + 自绘图标)
+    src/ui/FontLoader.h
+    src/ui/FontLoader.cpp
+    src/ui/IconRenderer.h
+    src/ui/IconRenderer.cpp
+
     # UI (top-level)
     src/ui/Theme.h
     src/ui/Theme.cpp
@@ -57,6 +67,8 @@ set(APP_SOURCES
     src/ui/SettingsDialog.cpp
     src/ui/AiHistoryDialog.h
     src/ui/AiHistoryDialog.cpp
+    src/ui/AiResultsDialog.h
+    src/ui/AiResultsDialog.cpp
     src/ui/CategoryPieChart.h
     src/ui/CategoryPieChart.cpp
 
@@ -73,10 +85,29 @@ set(APP_SOURCES
     src/ui/widgets/SourceDistributionWidget.cpp
     src/ui/widgets/InsightsWidget.h
     src/ui/widgets/InsightsWidget.cpp
+    src/ui/widgets/ComparisonWidget.h
+    src/ui/widgets/ComparisonWidget.cpp
+    src/ui/widgets/MotivationWidget.h
+    src/ui/widgets/MotivationWidget.cpp
 )
+
+# ---- 可选资源（字体 + 图标 SVG） ----
+# 若 assets/app.qrc 存在则一起编译进来（用户放置的 ttf 字体也会被打包）
+set(APP_RESOURCES "")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/app.qrc")
+    list(APPEND APP_RESOURCES "assets/app.qrc")
+endif()
+
+# Windows 资源（exe 图标 + 元信息）
+set(WIN_RES "")
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/app.rc")
+    list(APPEND WIN_RES "assets/app.rc")
+endif()
 
 qt_add_executable(TimeMaster WIN32 MACOSX_BUNDLE
     ${APP_SOURCES}
+    ${APP_RESOURCES}
+    ${WIN_RES}
 )
 
 target_link_libraries(TimeMaster
@@ -97,7 +128,7 @@ if(WIN32)
     )
 endif()
 
-# macOS bundle metadata (kept for cross-platform)
+# macOS bundle metadata
 if(APPLE)
     set_target_properties(TimeMaster PROPERTIES
         MACOSX_BUNDLE TRUE
@@ -108,5 +139,4 @@ if(APPLE)
     )
 endif()
 
-# Convenience: print summary
 message(STATUS "TimeMaster ${PROJECT_VERSION} configured (Qt ${Qt6_VERSION})")

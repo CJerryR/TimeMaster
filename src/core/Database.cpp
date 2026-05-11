@@ -21,12 +21,38 @@ Database::~Database() {
 }
 
 bool Database::open() {
-    // 优先使用系统数据目录；如果失败，退回到 exe 同级目录
-    QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-    if (dataDir.isEmpty()) {
-        dataDir = QCoreApplication::applicationDirPath();
+    // ---- 数据库路径策略 ----
+    // 1. 优先：项目根目录下的 database/（与 src/ 同级）。
+    //    从可执行文件位置向上寻找含 "src" 子目录的目录作为项目根，
+    //    这样开发时（build/Release/TimeMaster.exe）能落到 <project>/database/。
+    // 2. 备选：可执行文件同级的 database/ 目录。
+    // 3. 兜底：系统 AppData。
+
+    QString dataDir;
+    QString exeDir = QCoreApplication::applicationDirPath();
+
+    QDir search(exeDir);
+    for (int i = 0; i < 6; ++i) {
+        if (search.exists("src") && search.exists("CMakeLists.txt")) {
+            QString candidate = search.absolutePath() + "/database";
+            QDir().mkpath(candidate);
+            dataDir = candidate;
+            break;
+        }
+        if (!search.cdUp()) break;
     }
-    QDir().mkpath(dataDir);
+
+    if (dataDir.isEmpty()) {
+        QString candidate = exeDir + "/database";
+        if (QDir().mkpath(candidate)) {
+            dataDir = candidate;
+        }
+    }
+
+    if (dataDir.isEmpty()) {
+        dataDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+        QDir().mkpath(dataDir);
+    }
     m_dbPath = dataDir + "/timemaster.db";
 
     m_db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);

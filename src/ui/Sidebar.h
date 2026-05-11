@@ -9,11 +9,13 @@ class QVBoxLayout;
 
 namespace timemaster {
 
+class SidebarLogo;
+
 /**
  * 左侧导航栏
- *  - 顶部 Logo
- *  - 三个导航项：日历 / 分析 / 对话
- *  - 底部：主题切换 + 设置
+ *  - 顶部 Logo：自绘贴图（用当前选中的 App 图标）
+ *  - 三个导航项：日历 / 分析 / 对话（QPainter 贴图图标，跟主题变色）
+ *  - 底部：主题切换 + 设置（贴图按钮，确保不被裁切）
  *  - 半透明背景，让主窗口的渐变隐隐透出
  */
 class Sidebar : public QWidget {
@@ -36,9 +38,10 @@ private slots:
     void onNavClicked(int idx);
 
 private:
-    QPushButton *makeNavButton(const QString &icon, const QString &label);
+    QPushButton *makeNavButton(int iconId, const QString &label);
+    void refreshNavIcons();
 
-    QLabel *m_logo = nullptr;
+    SidebarLogo *m_logoWidget = nullptr;
     QVector<QPushButton*> m_navButtons;
     QPushButton *m_themeBtn = nullptr;
     QPushButton *m_settingsBtn = nullptr;

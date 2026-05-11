@@ -1,5 +1,6 @@
 #include "AiHistoryDialog.h"
 #include "Theme.h"
+#include "IconRenderer.h"
 #include "../core/Database.h"
 
 #include <QVBoxLayout>
@@ -37,7 +38,15 @@ void AiHistoryDialog::buildUi() {
 
     // ---- 标题区 ----
     auto *titleRow = new QHBoxLayout;
-    auto *title = new QLabel("🕐  AI 导入历史");
+    titleRow->setSpacing(8);
+
+    auto *titleIcon = new QLabel;
+    titleIcon->setObjectName("HistoryTitleIcon");
+    titleIcon->setFixedSize(22, 22);
+    titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::History, Theme::instance().brand(), 22));
+    titleRow->addWidget(titleIcon);
+
+    auto *title = new QLabel("AI 导入历史");
     title->setObjectName("HistoryTitle");
     titleRow->addWidget(title);
 

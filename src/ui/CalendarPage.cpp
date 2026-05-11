@@ -1,9 +1,11 @@
 #include "CalendarPage.h"
 #include "Theme.h"
+#include "IconRenderer.h"
 #include "MonthView.h"
 #include "TimeGridView.h"
 #include "EventDialog.h"
 #include "AiHistoryDialog.h"
+#include "AiResultsDialog.h"
 #include "../core/Database.h"
 #include "../core/DeepSeekClient.h"
 
@@ -20,6 +22,7 @@
 #include <QListWidgetItem>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QFrame>
 
 namespace timemaster {
 
@@ -33,10 +36,12 @@ CalendarPage::CalendarPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     connect(&Theme::instance(), &Theme::changed, this, &CalendarPage::applyTheme);
 
     connect(m_db, &Database::eventsChanged, this, &CalendarPage::refresh);
+    connect(m_db, &Database::eventsChanged, this, &CalendarPage::refreshEmptyHint);
     connect(m_ai, &DeepSeekClient::parseFinished, this, &CalendarPage::onParseFinished);
     connect(m_ai, &DeepSeekClient::parseError, this, &CalendarPage::onParseError);
 
     refresh();
+    refreshEmptyHint();
 }
 
 void CalendarPage::buildUi() {
@@ -44,17 +49,16 @@ void CalendarPage::buildUi() {
     root->setContentsMargins(20, 18, 20, 20);
     root->setSpacing(14);
 
-    // ============ AI 解析输入条（卡片样式） ============
+    // ============ AI 解析输入条 ============
     auto *parseCard = new QWidget;
     parseCard->setObjectName("AiInputCard");
     auto *parseLayout = new QHBoxLayout(parseCard);
     parseLayout->setContentsMargins(14, 10, 10, 10);
     parseLayout->setSpacing(10);
 
-    auto *iconLabel = new QLabel("✨");
-    QFont iconFont; iconFont.setPointSize(16);
-    iconLabel->setFont(iconFont);
-    parseLayout->addWidget(iconLabel);
+    m_sparkleIcon = new QLabel;
+    m_sparkleIcon->setFixedSize(22, 22);
+    parseLayout->addWidget(m_sparkleIcon);
 
     m_parseInput = new QLineEdit;
     m_parseInput->setObjectName("AiInputEdit");
@@ -62,18 +66,25 @@ void CalendarPage::buildUi() {
     m_parseInput->setMinimumHeight(40);
     parseLayout->addWidget(m_parseInput, 1);
 
-    m_historyButton = new QPushButton("🕐 导入历史");
-    m_historyButton->setObjectName("HistoryBtn");
-    m_historyButton->setCursor(Qt::PointingHandCursor);
-    m_historyButton->setMinimumHeight(40);
-    m_historyButton->setToolTip("查看并撤销 AI 导入的日程");
-    parseLayout->addWidget(m_historyButton);
-
     m_parseButton = new QPushButton("AI 解析");
     m_parseButton->setProperty("class", "primary");
     m_parseButton->setMinimumSize(96, 40);
     m_parseButton->setCursor(Qt::PointingHandCursor);
     parseLayout->addWidget(m_parseButton);
+
+    // 「← 开始导入」提示标签：在没有任何日程时显示
+    m_emptyHint = new QLabel("← 从这里开始导入");
+    m_emptyHint->setObjectName("ParseEmptyHint");
+    m_emptyHint->setMinimumWidth(140);
+    parseLayout->addWidget(m_emptyHint);
+
+    m_historyButton = new QPushButton(" 导入历史");
+    m_historyButton->setObjectName("HistoryBtn");
+    m_historyButton->setCursor(Qt::PointingHandCursor);
+    m_historyButton->setMinimumHeight(40);
+    m_historyButton->setIconSize(QSize(16, 16));
+    m_historyButton->setToolTip("查看并撤销 AI 导入的日程");
+    parseLayout->addWidget(m_historyButton);
 
     m_parseStatus = new QLabel;
     m_parseStatus->setObjectName("ParseStatusLabel");
@@ -101,19 +112,22 @@ void CalendarPage::buildUi() {
 
     headerLayout->addSpacing(6);
 
-    auto *btnPrev = new QPushButton("‹");
-    btnPrev->setObjectName("NavArrow");
-    btnPrev->setFixedSize(34, 34);
-    btnPrev->setCursor(Qt::PointingHandCursor);
-    connect(btnPrev, &QPushButton::clicked, this, &CalendarPage::goPrev);
-    headerLayout->addWidget(btnPrev);
+    // 左右导航：用 IconRenderer 贴图，居中绘制
+    m_btnPrev = new QPushButton;
+    m_btnPrev->setObjectName("NavArrow");
+    m_btnPrev->setFixedSize(36, 36);
+    m_btnPrev->setIconSize(QSize(18, 18));
+    m_btnPrev->setCursor(Qt::PointingHandCursor);
+    connect(m_btnPrev, &QPushButton::clicked, this, &CalendarPage::goPrev);
+    headerLayout->addWidget(m_btnPrev);
 
-    auto *btnNext = new QPushButton("›");
-    btnNext->setObjectName("NavArrow");
-    btnNext->setFixedSize(34, 34);
-    btnNext->setCursor(Qt::PointingHandCursor);
-    connect(btnNext, &QPushButton::clicked, this, &CalendarPage::goNext);
-    headerLayout->addWidget(btnNext);
+    m_btnNext = new QPushButton;
+    m_btnNext->setObjectName("NavArrow");
+    m_btnNext->setFixedSize(36, 36);
+    m_btnNext->setIconSize(QSize(18, 18));
+    m_btnNext->setCursor(Qt::PointingHandCursor);
+    connect(m_btnNext, &QPushButton::clicked, this, &CalendarPage::goNext);
+    headerLayout->addWidget(m_btnNext);
 
     m_titleLabel = new QLabel;
     m_titleLabel->setObjectName("CalendarTitle");
@@ -131,7 +145,7 @@ void CalendarPage::buildUi() {
 
     headerLayout->addStretch();
 
-    // 视图切换分段（用一个容器实现胶囊外观）
+    // 视图切换分段
     auto *segWrap = new QWidget;
     segWrap->setObjectName("ViewSegment");
     auto *segLayout = new QHBoxLayout(segWrap);
@@ -156,7 +170,7 @@ void CalendarPage::buildUi() {
 
     root->addWidget(headerWidget);
 
-    // ============ 视图区（卡片容器） ============
+    // ============ 视图区 ============
     auto *viewCard = new QWidget;
     viewCard->setObjectName("ViewCard");
     auto *viewLayout = new QVBoxLayout(viewCard);
@@ -183,13 +197,13 @@ void CalendarPage::buildUi() {
     connect(m_dayView, &TimeGridView::timeSlotClicked, this, &CalendarPage::onTimeSlotClicked);
     connect(m_dayView, &TimeGridView::eventClicked, this, &CalendarPage::onEventClicked);
 
-    // ============ 快捷键 ============
+    // 快捷键
     auto bind = [this](const char *key, std::function<void()> fn) {
         auto *sc = new QShortcut(QKeySequence(key), this);
         connect(sc, &QShortcut::activated, this, fn);
     };
     bind("Ctrl+N", [this]{ openCreateDialog(); });
-    bind("Ctrl+Z", [this]{ onHistoryClicked(); });  // 撤销 = 打开历史面板
+    bind("Ctrl+Z", [this]{ onHistoryClicked(); });
     bind("T",      [this]{ goToday(); });
     bind("Left",   [this]{ goPrev(); });
     bind("Right",  [this]{ goNext(); });
@@ -242,23 +256,24 @@ void CalendarPage::applyTheme() {
             color: %5;
             font-size: 12px;
         }
-
+        QLabel#ParseEmptyHint {
+            color: %7;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 0 6px;
+        }
         QLabel#CalendarTitle {
             color: %3;
             background: transparent;
         }
         QPushButton#NavArrow {
-            background-color: transparent;
+            background-color: %4;
             border: 1px solid %2;
-            border-radius: 9px;
-            color: %5;
-            font-size: 18px;
-            font-weight: 500;
-            padding-bottom: 2px;
+            border-radius: 11px;
+            padding: 0;
         }
         QPushButton#NavArrow:hover {
             background-color: %6;
-            color: %3;
         }
         QPushButton#TodayBtn {
             background-color: transparent;
@@ -271,7 +286,6 @@ void CalendarPage::applyTheme() {
             background-color: %6;
             color: %3;
         }
-
         QWidget#ViewSegment {
             background-color: %4;
             border: 1px solid %2;
@@ -294,7 +308,6 @@ void CalendarPage::applyTheme() {
             color: white;
             font-weight: 600;
         }
-
         QWidget#ViewCard {
             background-color: %1;
             border: 1px solid %2;
@@ -308,6 +321,18 @@ void CalendarPage::applyTheme() {
     /*5*/.arg(textSec)
     /*6*/.arg(hoverBg)
     /*7*/.arg(brand));
+
+    // 图标贴图
+    m_sparkleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::Sparkle, t.brand(), 22));
+    m_historyButton->setIcon(IconRenderer::icon(IconRenderer::History, t.textSecondary(), 16));
+    m_btnPrev->setIcon(IconRenderer::icon(IconRenderer::ArrowLeft,  t.textPrimary(), 18));
+    m_btnNext->setIcon(IconRenderer::icon(IconRenderer::ArrowRight, t.textPrimary(), 18));
+}
+
+void CalendarPage::refreshEmptyHint() {
+    if (!m_db || !m_emptyHint) return;
+    bool isEmpty = m_db->getAllEvents().isEmpty();
+    m_emptyHint->setVisible(isEmpty);
 }
 
 void CalendarPage::setView(CalendarView v) {
@@ -522,69 +547,27 @@ void CalendarPage::onParseFinished(const QList<ScheduleSuggestion> &items) {
         return;
     }
 
-    QDialog dlg(this);
-    dlg.setWindowTitle("AI 识别结果");
-    dlg.setMinimumSize(560, 500);
-    dlg.setStyleSheet(Theme::instance().globalStylesheet());
-    auto *layout = new QVBoxLayout(&dlg);
-    layout->setContentsMargins(22, 20, 22, 18);
-
-    auto *header = new QLabel(QString("✨ 识别到 %1 条日程，请确认要导入的：").arg(items.size()));
-    header->setProperty("class", "subtitle");
-    layout->addWidget(header);
-
-    auto *tip = new QLabel("导入后如有错误，可通过顶部「🕐 导入历史」整批撤销或单条删除。");
-    tip->setProperty("class", "caption");
-    tip->setWordWrap(true);
-    layout->addWidget(tip);
-    layout->addSpacing(6);
-
-    auto *list = new QListWidget(&dlg);
-    list->setSelectionMode(QAbstractItemView::NoSelection);
-    auto pal = Theme::instance().palette();
-    for (int i = 0; i < items.size(); ++i) {
-        const auto &s = items[i];
-        auto *item = new QListWidgetItem();
-        QString time = s.allDay
-            ? "全天"
-            : (s.startDate.toString("MM-dd HH:mm")
-               + " — " + s.endDate.toString("HH:mm"));
-        item->setText(QString("  %1\n  %2 · %3 · %4")
-                          .arg(s.title, time, categoryLabel(s.category),
-                               priorityLabel(s.priority)));
-        item->setCheckState(Qt::Checked);
-        QColor c = pal[s.color].text;
-        item->setForeground(c);
-        item->setSizeHint(QSize(0, 56));
-        list->addItem(item);
-    }
-    layout->addWidget(list, 1);
-
-    auto *bb = new QDialogButtonBox(QDialogButtonBox::Cancel | QDialogButtonBox::Save);
-    bb->button(QDialogButtonBox::Save)->setText("导入");
-    bb->button(QDialogButtonBox::Save)->setProperty("class", "primary");
-    connect(bb, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    connect(bb, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    layout->addWidget(bb);
-
+    // 用新对话框：每条都能编辑 / 删除
+    AiResultsDialog dlg(items, this);
     if (dlg.exec() != QDialog::Accepted) {
         m_parseStatus->setText("已取消");
         return;
     }
+    auto picked = dlg.selectedSuggestions();
+    if (picked.isEmpty()) {
+        m_parseStatus->setText("未选中任何条目");
+        return;
+    }
 
-    // 创建一个 batch
     QString batchId = m_db->createAiBatch(m_pendingParseText, "parse");
-
     int added = 0;
-    for (int i = 0; i < items.size(); ++i) {
-        if (list->item(i)->checkState() != Qt::Checked) continue;
-        const auto &s = items[i];
+    for (const auto &s : picked) {
         CalendarEvent e;
         e.id = Database::generateId();
         e.title = s.title;
         e.description = s.description;
         e.startDate = s.startDate.isValid() ? s.startDate : QDateTime::currentDateTime();
-        e.endDate = s.endDate.isValid() ? s.endDate : e.startDate.addSecs(60 * s.durationMinutes);
+        e.endDate = s.endDate.isValid() ? s.endDate : e.startDate.addSecs(60 * qMax(15, s.durationMinutes));
         e.allDay = s.allDay;
         e.color = s.color;
         e.category = s.category;

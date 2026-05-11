@@ -215,17 +215,23 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         QDate d = days[i];
         bool isToday = (d == today);
 
-        QFont f1 = font(); f1.setPointSize(10);
+        // 周几标签：加粗
+        QFont f1 = font();
+        f1.setPointSize(10);
+        f1.setWeight(QFont::Bold);
         p.setFont(f1);
         p.setPen(isToday ? theme.brand() : theme.textSecondary());
         QRect topR(col.left(), 8, col.width(), 16);
         p.drawText(topR, Qt::AlignCenter, weekdays[d.dayOfWeek() % 7]);
 
-        QFont f2 = font(); f2.setPointSize(20); f2.setWeight(QFont::DemiBold);
-        p.setFont(f2);
-
         if (isToday) {
-            int diam = 32;
+            // 高亮圆与数字之间留出 4px 内边距，数字稍小一些保持加粗
+            QFont fnum = font();
+            fnum.setPointSize(16);
+            fnum.setWeight(QFont::Bold);
+            p.setFont(fnum);
+
+            int diam = 34;  // 比之前(32)大一圈，把数字裹得更宽松
             QRect circle(col.center().x() - diam / 2, 24, diam, diam);
             p.setBrush(theme.brand());
             p.setPen(Qt::NoPen);
@@ -233,6 +239,10 @@ void TimeGridView::paintEvent(QPaintEvent *) {
             p.setPen(Qt::white);
             p.drawText(circle, Qt::AlignCenter, QString::number(d.day()));
         } else {
+            QFont f2 = font();
+            f2.setPointSize(19);
+            f2.setWeight(QFont::DemiBold);
+            p.setFont(f2);
             int dow = d.dayOfWeek() % 7;
             p.setPen((dow == 0 || dow == 6) ? theme.danger() : theme.textPrimary());
             QRect dR(col.left(), 26, col.width(), 30);
@@ -306,14 +316,19 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         }
         auto &c = pal[er.event.color];
 
+        // Apple Calendar 风：四角统一 6px 圆角；左侧 3px 内嵌彩条同样圆角，
+        // 而不是把整个块切掉。
         QPainterPath path;
         path.addRoundedRect(r, 6, 6);
         p.fillPath(path, c.bg);
 
-        QRect bar(r.left(), r.top(), 3, r.height());
-        p.fillRect(bar, c.text);
+        // 左侧 strip：内缩 1px，单独圆角，不再硬切
+        QRect bar(r.left() + 2, r.top() + 3, 3, qMax(0, r.height() - 6));
+        QPainterPath barPath;
+        barPath.addRoundedRect(bar, 1.5, 1.5);
+        p.fillPath(barPath, c.text);
 
-        QRect tr(r.left() + 8, r.top() + 4, r.width() - 12, r.height() - 6);
+        QRect tr(r.left() + 10, r.top() + 4, r.width() - 14, r.height() - 6);
         p.setPen(c.text);
 
         QFont f = font(); f.setPointSize(11); f.setWeight(QFont::DemiBold);

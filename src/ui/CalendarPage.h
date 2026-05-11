@@ -40,6 +40,7 @@ private slots:
     void onMonthDateClicked(const QDate &d);
     void onMonthOverflowClicked(const QDate &d, const QList<CalendarEvent> &events);
     void onHistoryClicked();
+    void refreshEmptyHint();
 
     void applyTheme();
 
@@ -54,19 +55,23 @@ private:
     CalendarView m_view = CalendarView::Month;
     QDate m_currentDate;
     QList<CalendarEvent> m_events;
-    QString m_pendingParseText;     // 最近一次解析的原始文本（用于建 batch）
+    QString m_pendingParseText;
 
     // header
     QLabel *m_titleLabel;
     QPushButton *m_btnDay;
     QPushButton *m_btnWeek;
     QPushButton *m_btnMonth;
+    QPushButton *m_btnPrev = nullptr;
+    QPushButton *m_btnNext = nullptr;
 
     // ai input
+    QLabel *m_sparkleIcon = nullptr;
     QLineEdit *m_parseInput;
     QPushButton *m_parseButton;
     QPushButton *m_historyButton;
     QLabel *m_parseStatus;
+    QLabel *m_emptyHint = nullptr;
 
     QStackedWidget *m_stack;
     MonthView *m_monthView;

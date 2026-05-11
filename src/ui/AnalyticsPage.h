@@ -6,6 +6,7 @@
 #include <QDate>
 #include <QDateTime>
 #include <QScrollArea>
+#include <QPushButton>
 
 #include "../core/Types.h"
 
@@ -19,6 +20,8 @@ class StatsCardsWidget;
 class SourceDistributionWidget;
 class InsightsWidget;
 class RhythmCardWidget;
+class ComparisonWidget;
+class MotivationWidget;
 
 class AnalyticsPage : public QWidget {
     Q_OBJECT
@@ -30,16 +33,18 @@ public slots:
 
 private slots:
     void onRangeChanged();
+    void applyTheme();
 
 private:
     void buildUI();
-    void applyTheme();
     QFrame *makeCardFrame();
 
     Database *m_db;
 
     QLabel *m_title;
+    QLabel *m_titleIcon = nullptr;
     QComboBox *m_rangeCombo;
+    QPushButton *m_refreshBtn = nullptr;
 
     StatsCardsWidget *m_statsCards;
     CategoryPieChart *m_pieChart;
@@ -48,6 +53,8 @@ private:
     RhythmCardWidget *m_rhythmWidget;
     SourceDistributionWidget *m_sourceWidget;
     InsightsWidget *m_insightsWidget;
+    ComparisonWidget *m_comparisonWidget = nullptr;
+    MotivationWidget *m_motivationWidget = nullptr;
 
     QScrollArea *m_scrollArea;
 };

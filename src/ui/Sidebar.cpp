@@ -1,20 +1,39 @@
 #include "Sidebar.h"
 #include "Theme.h"
+#include "IconRenderer.h"
 
 #include <QPushButton>
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFrame>
+#include <QPainter>
+#include <QPaintEvent>
 
 namespace timemaster {
+
+// 自绘的左上角 Logo 方块（贴图风，含主图标 + 主题色背景圆角矩形）
+class SidebarLogo : public QWidget {
+public:
+    explicit SidebarLogo(QWidget *parent = nullptr) : QWidget(parent) {
+        setFixedSize(40, 40);
+    }
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        // 用当前选中的 App 图标作为 logo（已含背景色块）
+        auto pm = IconRenderer::appIcon(IconRenderer::defaultAppIcon(), 40);
+        p.drawPixmap(0, 0, pm);
+    }
+};
 
 Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
     setObjectName("Sidebar");
     setFixedWidth(232);
 
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(18, 24, 18, 24);
+    root->setContentsMargins(18, 22, 18, 22);
     root->setSpacing(6);
 
     // ---- Logo 区 ----
@@ -22,10 +41,8 @@ Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
     logoRow->setContentsMargins(2, 0, 0, 0);
     logoRow->setSpacing(11);
 
-    m_logo = new QLabel("时");
-    m_logo->setObjectName("LogoBox");
-    m_logo->setFixedSize(38, 38);
-    m_logo->setAlignment(Qt::AlignCenter);
+    m_logoWidget = new SidebarLogo;
+    logoRow->addWidget(m_logoWidget);
 
     auto *brandWrap = new QVBoxLayout;
     brandWrap->setContentsMargins(0, 0, 0, 0);
@@ -37,17 +54,16 @@ Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
     brandWrap->addWidget(brandText);
     brandWrap->addWidget(subText);
 
-    logoRow->addWidget(m_logo);
     logoRow->addLayout(brandWrap);
     logoRow->addStretch();
     root->addLayout(logoRow);
 
-    root->addSpacing(28);
+    root->addSpacing(26);
 
     // ---- 导航项 ----
-    m_navButtons << makeNavButton("📅", "日历")
-                 << makeNavButton("📊", "分析")
-                 << makeNavButton("💬", "AI 对话");
+    m_navButtons << makeNavButton(IconRenderer::NavCalendar,  "日历")
+                 << makeNavButton(IconRenderer::NavAnalytics, "分析")
+                 << makeNavButton(IconRenderer::NavChat,      "AI 对话");
 
     for (int i = 0; i < m_navButtons.size(); ++i) {
         QPushButton *b = m_navButtons[i];
@@ -57,27 +73,31 @@ Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
 
     root->addStretch();
 
-    // ---- 底部 ----
+    // ---- 底部分割线 ----
     auto *divider = new QFrame;
     divider->setObjectName("SidebarDivider");
     divider->setFixedHeight(1);
     root->addWidget(divider);
     root->addSpacing(10);
 
+    // ---- 底部工具按钮 ----
     auto *toolRow = new QHBoxLayout;
     toolRow->setContentsMargins(0, 0, 0, 0);
-    toolRow->setSpacing(8);
+    toolRow->setSpacing(10);
 
-    m_themeBtn = new QPushButton("🌙");
+    m_themeBtn = new QPushButton;
     m_themeBtn->setObjectName("SidebarToolBtn");
-    m_themeBtn->setFixedSize(42, 42);
-    m_themeBtn->setToolTip("切换主题");
+    m_themeBtn->setFixedSize(44, 44);
+    m_themeBtn->setIconSize(QSize(22, 22));
+    m_themeBtn->setToolTip("切换浅色 / 深色主题");
     m_themeBtn->setCursor(Qt::PointingHandCursor);
+    // 关键：确保不会被相邻 widget 裁掉 —— 给一点 margin 留白
     connect(m_themeBtn, &QPushButton::clicked, this, &Sidebar::themeToggleRequested);
 
-    m_settingsBtn = new QPushButton("⚙");
+    m_settingsBtn = new QPushButton;
     m_settingsBtn->setObjectName("SidebarToolBtn");
-    m_settingsBtn->setFixedSize(42, 42);
+    m_settingsBtn->setFixedSize(44, 44);
+    m_settingsBtn->setIconSize(QSize(22, 22));
     m_settingsBtn->setToolTip("设置");
     m_settingsBtn->setCursor(Qt::PointingHandCursor);
     connect(m_settingsBtn, &QPushButton::clicked, this, &Sidebar::settingsRequested);
@@ -93,12 +113,14 @@ Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
     applyTheme();
 }
 
-QPushButton *Sidebar::makeNavButton(const QString &icon, const QString &label) {
-    auto *btn = new QPushButton(QString("  %1   %2").arg(icon, label));
+QPushButton *Sidebar::makeNavButton(int iconId, const QString &label) {
+    auto *btn = new QPushButton(label);
     btn->setObjectName("SidebarNavBtn");
-    btn->setMinimumHeight(42);
+    btn->setMinimumHeight(44);
+    btn->setIconSize(QSize(20, 20));
     btn->setCursor(Qt::PointingHandCursor);
     btn->setCheckable(true);
+    btn->setProperty("iconId", iconId);
     return btn;
 }
 
@@ -107,11 +129,24 @@ void Sidebar::setCurrentItem(NavItem item) {
     for (int i = 0; i < m_navButtons.size(); ++i) {
         m_navButtons[i]->setChecked(i == int(item));
     }
+    // 刷新图标颜色（选中态用 brand 色）
+    refreshNavIcons();
 }
 
 void Sidebar::onNavClicked(int idx) {
     setCurrentItem(static_cast<NavItem>(idx));
     emit navigated(idx);
+}
+
+void Sidebar::refreshNavIcons() {
+    Theme &t = Theme::instance();
+    for (int i = 0; i < m_navButtons.size(); ++i) {
+        auto *b = m_navButtons[i];
+        bool active = (i == int(m_current));
+        QColor c = active ? t.brand() : t.textSecondary();
+        int id = b->property("iconId").toInt();
+        b->setIcon(IconRenderer::icon(static_cast<IconRenderer::Icon>(id), c, 20));
+    }
 }
 
 void Sidebar::applyTheme() {
@@ -125,14 +160,6 @@ void Sidebar::applyTheme() {
         QWidget#Sidebar {
             background-color: %1;
             border-right: 1px solid %2;
-        }
-        QLabel#LogoBox {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                        stop:0 %3, stop:1 #B85A3D);
-            color: white;
-            border-radius: 11px;
-            font-size: 19px;
-            font-weight: 700;
         }
         QLabel#BrandText {
             color: %4;
@@ -148,9 +175,9 @@ void Sidebar::applyTheme() {
         }
         QPushButton#SidebarNavBtn {
             text-align: left;
-            padding: 9px 14px;
+            padding: 9px 10px 9px 16px;
             border: none;
-            border-radius: 10px;
+            border-radius: 11px;
             background-color: transparent;
             color: %5;
             font-size: 14px;
@@ -161,7 +188,7 @@ void Sidebar::applyTheme() {
             color: %4;
         }
         QPushButton#SidebarNavBtn:checked {
-            background-color: rgba(217,119,87,0.13);
+            background-color: rgba(217,119,87,0.14);
             color: %3;
             font-weight: 600;
         }
@@ -171,13 +198,13 @@ void Sidebar::applyTheme() {
         }
         QPushButton#SidebarToolBtn {
             border: 1px solid %2;
-            border-radius: 10px;
-            background-color: transparent;
+            border-radius: 11px;
+            background-color: %7;
             color: %5;
-            font-size: 18px;
+            padding: 0;
         }
         QPushButton#SidebarToolBtn:hover {
-            background-color: rgba(120,120,140,0.10);
+            background-color: %8;
             color: %4;
             border-color: %5;
         }
@@ -187,9 +214,17 @@ void Sidebar::applyTheme() {
     /*3*/.arg(brand)
     /*4*/.arg(textPrim)
     /*5*/.arg(textSec)
-    /*6*/.arg(placeholder));
+    /*6*/.arg(placeholder)
+    /*7*/.arg(t.bgContainer().name())
+    /*8*/.arg(t.cardBgHoverRgba()));
 
-    m_themeBtn->setText(t.mode() == Theme::Dark ? "☀" : "🌙");
+    // 工具按钮图标随主题切换
+    m_themeBtn->setIcon(IconRenderer::icon(
+        t.mode() == Theme::Dark ? IconRenderer::ThemeSun : IconRenderer::ThemeMoon,
+        textPrim, 22));
+    m_settingsBtn->setIcon(IconRenderer::icon(IconRenderer::Settings, textPrim, 22));
+    refreshNavIcons();
+    if (m_logoWidget) m_logoWidget->update();
 }
 
 } // namespace timemaster

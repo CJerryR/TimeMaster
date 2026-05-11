@@ -130,11 +130,11 @@ void MonthView::paintEvent(QPaintEvent *) {
     // 透明背景（让上层卡片背景透出）
     p.fillRect(rect(), Qt::transparent);
 
-    // 周表头
+    // 周表头（加粗）
     static const char *weekdays[] = {"日","一","二","三","四","五","六"};
     QFont headerFont = font();
-    headerFont.setPointSize(10);
-    headerFont.setWeight(QFont::DemiBold);
+    headerFont.setPointSize(11);
+    headerFont.setWeight(QFont::Bold);
     p.setFont(headerFont);
     double cellW = double(width()) / 7.0;
 
@@ -188,8 +188,13 @@ void MonthView::paintEvent(QPaintEvent *) {
         p.setPen(dateColor);
 
         if (cell.isToday) {
-            p.setFont(dateBigFont);
-            int diam = 24;
+            // 留出 padding：圆比之前(24)略大到 26，数字小一档(10pt)保持加粗
+            QFont fnum = font();
+            fnum.setPointSize(10);
+            fnum.setWeight(QFont::Bold);
+            p.setFont(fnum);
+
+            int diam = 26;
             QRect circle(dateRect.left(), dateRect.top() + (dateRect.height() - diam) / 2,
                         diam, diam);
             p.setBrush(theme.brand());
@@ -215,11 +220,14 @@ void MonthView::paintEvent(QPaintEvent *) {
         path.addRoundedRect(er.rect, 5, 5);
         p.fillPath(path, c.bg);
 
-        QRect bar(er.rect.left(), er.rect.top(), 3, er.rect.height());
-        p.fillRect(bar, c.text);
+        // 左侧 strip：内嵌、圆角，不再硬切
+        QRect bar(er.rect.left() + 1, er.rect.top() + 2, 3, qMax(0, er.rect.height() - 4));
+        QPainterPath barPath;
+        barPath.addRoundedRect(bar, 1.5, 1.5);
+        p.fillPath(barPath, c.text);
 
-        QRect tr(er.rect.left() + 8, er.rect.top(),
-                 er.rect.width() - 12, er.rect.height());
+        QRect tr(er.rect.left() + 9, er.rect.top(),
+                 er.rect.width() - 13, er.rect.height());
         p.setPen(c.text);
 
         QString label = er.event.title;

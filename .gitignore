@@ -30,6 +30,11 @@ V3.0/
 V3.1/
 _temp/
 
+# 运行时数据库（不上传）
+database/*.db
+database/*.db-shm
+database/*.db-wal
+
 # AI 工具
 claude/
 .claude/

@@ -1,0 +1,14 @@
+<!DOCTYPE RCC><RCC version="1.0">
+  <qresource prefix="/">
+    <!-- 9 版图标 SVG（备用，方便其他场景调用） -->
+    <file alias="icons/app_01.svg">icons/01_tick_ring_t.svg</file>
+    <file alias="icons/app_02.svg">icons/02_hourglass.svg</file>
+    <file alias="icons/app_03.svg">icons/03_night_clock.svg</file>
+    <file alias="icons/app_04.svg">icons/04_calendar_dot.svg</file>
+    <file alias="icons/app_05.svg">icons/05_concentric.svg</file>
+    <file alias="icons/app_06.svg">icons/06_sun_mountain.svg</file>
+    <file alias="icons/app_07.svg">icons/07_compass.svg</file>
+    <file alias="icons/app_08.svg">icons/08_time_band.svg</file>
+    <file alias="icons/app_09.svg">icons/09_time_seal.svg</file>
+  </qresource>
+</RCC>

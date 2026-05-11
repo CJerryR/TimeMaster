@@ -1,4 +1,5 @@
 #include "Theme.h"
+#include "FontLoader.h"
 
 namespace timemaster {
 
@@ -192,11 +193,12 @@ QString Theme::globalStylesheet() const {
     QString hoverBg = bgHover().name();
 
     // 基准：所有按钮/输入框 8px 圆角，符合 8pt 网格
+    QString fontFamily = FontLoader::familyChain();
     return QString(R"(
         /* ============ 基础类型 ============ */
         QWidget {
             color: %1;
-            font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+            font-family: )" + fontFamily + R"(;
         }
         QLabel { background: transparent; color: %1; }
         QLabel[class="title"] {

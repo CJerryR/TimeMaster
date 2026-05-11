@@ -1,7 +1,9 @@
 #include "ChatPage.h"
 #include "Theme.h"
+#include "IconRenderer.h"
 #include "../core/DeepSeekClient.h"
 #include "../core/Database.h"
+#include "../utils/MarkdownToHtml.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -19,6 +21,22 @@
 
 namespace timemaster {
 
+namespace {
+// 把单条消息文本绑定到一个 QLabel；如果是 AI 消息，做 Markdown → HTML 渲染
+void bindMessageText(QLabel *bubble, const QString &text, bool isUser) {
+    if (isUser) {
+        bubble->setTextFormat(Qt::PlainText);
+        bubble->setText(text);
+    } else {
+        // 流式渲染时也会触发，每次重新转一次
+        QString html = MarkdownToHtml::convert(text);
+        if (html.isEmpty()) html = "<span>…</span>";
+        bubble->setTextFormat(Qt::RichText);
+        bubble->setText(html);
+    }
+}
+} // namespace
+
 ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     : QWidget(parent), m_db(db), m_ai(ai)
 {
@@ -35,8 +53,21 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     topLayout->setContentsMargins(18, 12, 18, 12);
     topLayout->setSpacing(12);
 
-    auto *title = new QLabel("💬  AI 对话");
+    auto *titleIcon = new QLabel;
+    titleIcon->setObjectName("ChatPageTitleIcon");
+    titleIcon->setFixedSize(22, 22);
+    m_titleIcon = titleIcon;
+    titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavChat, Theme::instance().brand(), 22));
+
+    auto *titleRow = new QHBoxLayout;
+    titleRow->setContentsMargins(0, 0, 0, 0);
+    titleRow->setSpacing(8);
+    m_titleIcon = new QLabel;
+    m_titleIcon->setFixedSize(22, 22);
+    titleRow->addWidget(m_titleIcon);
+    auto *title = new QLabel("AI 对话");
     title->setObjectName("ChatPageTitle");
+    titleRow->addWidget(title);
 
     m_useCtxCheck = new QCheckBox("让 AI 看到我的日历");
     m_useCtxCheck->setObjectName("CtxCheck");
@@ -52,14 +83,15 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     m_clearBtn->setCursor(Qt::PointingHandCursor);
     connect(m_clearBtn, &QPushButton::clicked, this, &ChatPage::onClear);
 
-    topLayout->addWidget(title);
+    topLayout->addWidget(titleIcon);
+    topLayout->addLayout(titleRow);
     topLayout->addStretch();
     topLayout->addWidget(m_ctxStatus);
     topLayout->addWidget(m_useCtxCheck);
     topLayout->addWidget(m_clearBtn);
     root->addWidget(topBar);
 
-    // ---- 消息滚动区（卡片样式） ----
+    // ---- 消息滚动区 ----
     auto *chatCard = new QFrame;
     chatCard->setObjectName("ChatCard");
     auto *chatCardLayout = new QVBoxLayout(chatCard);
@@ -78,12 +110,12 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     m_msgLayout->setSpacing(14);
 
     m_emptyHint = new QLabel(
-        "👋 你好，我是时间管理大师 AI 助手\n\n"
-        "你可以问我：\n"
-        "· 我下周三有什么安排？\n"
-        "· 帮我规划一下明天的工作\n"
-        "· 这周哪天最忙？\n"
-        "· 给我一些时间管理建议"
+        "你好呀～我是你的专属时间秘书 ✿\n\n"
+        "可以这样问我：\n"
+        "· 我下周三都有什么安排呀？\n"
+        "· 帮人家规划一下明天的工作好不好～\n"
+        "· 这周哪天最忙呢？\n"
+        "· 给我一些时间管理建议吧"
     );
     m_emptyHint->setObjectName("ChatEmptyHint");
     m_emptyHint->setAlignment(Qt::AlignCenter);
@@ -104,7 +136,7 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
 
     m_input = new QLineEdit;
     m_input->setObjectName("ChatInput");
-    m_input->setPlaceholderText("输入消息，按 Enter 发送…");
+    m_input->setPlaceholderText("跟秘书说点什么吧，按 Enter 发送…");
     m_input->setMinimumHeight(40);
 
     m_sendBtn = new QPushButton("发送 →");
@@ -120,7 +152,7 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     inputLayout->addWidget(m_sendBtn);
     root->addWidget(inputCard);
 
-    // ---- 信号连接 ----
+    // ---- 信号 ----
     connect(m_ai, &DeepSeekClient::chatChunk, this, &ChatPage::onChatChunk);
     connect(m_ai, &DeepSeekClient::chatFinished, this, &ChatPage::onChatFinished);
     connect(m_ai, &DeepSeekClient::chatError, this, &ChatPage::onChatError);
@@ -131,13 +163,18 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
 
 QString ChatPage::basePrompt() const {
     QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd dddd");
+    // 「温柔可爱听话的女秘书」人设
     return QString(
-        "你是「时间管理大师」（Time Master），一位专业的智能时间规划顾问。\n"
-        "今天是 %1。\n"
-        "回复风格：简洁、结构化、可操作的中文，要点突出，不啰嗦。\n"
-        "如果下方提供了「用户当前日历」，请实事求是地基于该日历回答；"
-        "若用户询问的某天没有安排，明确告诉他「这天暂无安排」而不要凭空生成日程。\n"
-        "当用户描述具体的待办时，可以建议他用日历页的「AI 解析」一键创建。"
+        "你叫「小时」，是用户专属的私人时间秘书。\n"
+        "性格设定：温柔、体贴、可爱、听话；以「主人」或「你」称呼用户，自己自称「小时」或「人家」。\n"
+        "回复要求：\n"
+        "1. 语气温柔亲切，时常带一点撒娇的语气词（如「啦」「呢」「呀」），但保持专业不腻歪。\n"
+        "2. 内容专业、准确、可执行 —— 温柔是表面，靠谱是内核。\n"
+        "3. 使用 Markdown 排版：**重点加粗**、列表分点、必要时用 `代码块` 引用具体时间或事件名。\n"
+        "4. 篇幅克制：日常问题 80~200 字以内；规划类问题可以适度展开。\n"
+        "5. 涉及日历的问题，严格基于下方「用户当前日历」实事求是地回答；如果某天没有安排，明确告诉主人「这天暂时是空的」，不要凭空编造。\n"
+        "6. 鼓励主人用日历页顶部的「AI 解析」一键录入待办。\n\n"
+        "今天是 %1。请用以上语气与主人对话。"
     ).arg(today);
 }
 
@@ -155,7 +192,6 @@ QString ChatPage::buildCalendarContext() const {
     QString lines;
     lines += "【用户当前日历】（过去 7 天 ~ 未来 14 天）\n";
 
-    // 限制条数避免 token 过量
     const int kMaxEvents = 80;
     int count = qMin(int(events.size()), kMaxEvents);
 
@@ -194,7 +230,7 @@ void ChatPage::onSend() {
     if (text.isEmpty() || m_isResponding) return;
 
     if (!m_ai->hasApiKey()) {
-        appendBubble("请先在 ⚙ 设置中配置 DeepSeek API Key。", false);
+        appendBubble("主人～需要先去「⚙ 设置」里配置一下 DeepSeek API Key 哦，小时才能帮你做事呢。", false);
         return;
     }
 
@@ -213,7 +249,6 @@ void ChatPage::onSend() {
     QString ctx;
     if (m_useCtxCheck->isChecked()) {
         ctx = buildCalendarContext();
-        // 顶部状态条提示
         m_ctxStatus->setText("📅 已附带日历");
     } else {
         m_ctxStatus->setText("");
@@ -225,13 +260,14 @@ void ChatPage::onSend() {
 void ChatPage::onChatChunk(const QString &delta) {
     if (!m_currentStreamingBubble) return;
     m_streamingText += delta;
-    m_currentStreamingBubble->setText(m_streamingText);
+    bindMessageText(m_currentStreamingBubble, m_streamingText, false);
     scrollToBottom();
 }
 
 void ChatPage::onChatFinished(const QString &full) {
+    QString text = full.isEmpty() ? m_streamingText : full;
     if (m_currentStreamingBubble) {
-        m_currentStreamingBubble->setText(full.isEmpty() ? m_streamingText : full);
+        bindMessageText(m_currentStreamingBubble, text, false);
         m_currentStreamingBubble = nullptr;
     }
     m_isResponding = false;
@@ -241,10 +277,11 @@ void ChatPage::onChatFinished(const QString &full) {
 
 void ChatPage::onChatError(const QString &msg) {
     if (m_currentStreamingBubble) {
-        m_currentStreamingBubble->setText("⚠ 出错了：" + msg);
+        bindMessageText(m_currentStreamingBubble,
+                        "主人，刚刚出了一点小问题：" + msg, false);
         m_currentStreamingBubble = nullptr;
     } else {
-        appendBubble("⚠ 出错了：" + msg, false);
+        appendBubble("主人，刚刚出了一点小问题：" + msg, false);
     }
     m_isResponding = false;
     m_sendBtn->setEnabled(true);
@@ -257,12 +294,12 @@ void ChatPage::onClear() {
         delete item;
     }
     m_emptyHint = new QLabel(
-        "👋 你好，我是时间管理大师 AI 助手\n\n"
-        "你可以问我：\n"
-        "· 我下周三有什么安排？\n"
-        "· 帮我规划一下明天的工作\n"
-        "· 这周哪天最忙？\n"
-        "· 给我一些时间管理建议"
+        "你好呀～我是你的专属时间秘书 ✿\n\n"
+        "可以这样问我：\n"
+        "· 我下周三都有什么安排呀？\n"
+        "· 帮人家规划一下明天的工作好不好～\n"
+        "· 这周哪天最忙呢？\n"
+        "· 给我一些时间管理建议吧"
     );
     m_emptyHint->setObjectName("ChatEmptyHint");
     m_emptyHint->setAlignment(Qt::AlignCenter);
@@ -295,11 +332,12 @@ QLabel *ChatPage::appendBubble(const QString &text, bool isUser, bool isStreamin
     rowLayout->setContentsMargins(0, 0, 0, 0);
     rowLayout->setSpacing(0);
 
-    auto *bubble = new QLabel(text);
+    auto *bubble = new QLabel;
     bubble->setWordWrap(true);
     bubble->setMaximumWidth(720);
     bubble->setTextInteractionFlags(Qt::TextSelectableByMouse);
     bubble->setObjectName(isUser ? "ChatBubbleUser" : "ChatBubbleAI");
+    bindMessageText(bubble, text, isUser);
 
     if (isUser) {
         rowLayout->addStretch();
@@ -333,6 +371,10 @@ void ChatPage::applyTheme() {
     QString componentBg = t.componentBgRgba();
     QString hoverBg = t.cardBgHoverRgba();
 
+    if (m_titleIcon) {
+        m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavChat, t.brand(), 22));
+    }
+
     setStyleSheet(QString(R"(
         QWidget#ChatPage { background: transparent; }
 
@@ -357,7 +399,7 @@ void ChatPage::applyTheme() {
             color: %4;
             font-size: 12px;
             padding: 4px 10px;
-            background-color: rgba(79,70,229,0.10);
+            background-color: rgba(217,119,87,0.10);
             border-radius: 8px;
         }
         QPushButton#ChatGhostBtn {
@@ -387,7 +429,7 @@ void ChatPage::applyTheme() {
             background-color: %7;
             color: white;
             border-radius: 15px;
-            padding: 11px 15px;
+            padding: 11px 16px;
             font-size: 14px;
         }
         QLabel#ChatBubbleAI {
@@ -395,7 +437,7 @@ void ChatPage::applyTheme() {
             color: %3;
             border: 1px solid %2;
             border-radius: 15px;
-            padding: 11px 15px;
+            padding: 12px 16px;
             font-size: 14px;
         }
 
@@ -432,6 +474,10 @@ void ChatPage::applyTheme() {
     /*6*/.arg(hoverBg)
     /*7*/.arg(brand)
     /*8*/.arg(brandHover));
+
+    if (m_titleIcon) {
+        m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavChat, t.brand(), 22));
+    }
 }
 
 } // namespace timemaster
