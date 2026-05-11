@@ -1,92 +1,129 @@
-# 时智 (TimePlan) — C++ / Qt 6 版
+# 时间管理大师 · Time Master
 
-> 智能日程管理桌面应用，使用 C++ 和 Qt 6 实现，原生编译为 macOS / Linux / Windows 可执行文件。
+一款桌面端日程管理与时间分析工具，基于 Qt 6 + C++17 构建，使用 DeepSeek 模型把自然语言转成结构化日程。
 
-这是从原 Electron + React + TypeScript 版本完整重写的 C++ 版本。所有核心功能都已迁移：日历视图（日 / 周 / 月）、自然语言 AI 解析（DeepSeek）、事件管理、数据分析、AI 对话。
+![brand-red](https://img.shields.io/badge/brand-%23ef4444-ef4444) ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![Qt6](https://img.shields.io/badge/Qt-6-41cd52) ![SQLite](https://img.shields.io/badge/storage-SQLite-003B57)
 
-## ✨ 特性
+---
 
-### 核心功能
-- 📅 **三种日历视图**：日视图、周视图、月视图无缝切换
-- 🤖 **AI 自然语言解析**：在顶部输入框直接说"明天下午 3 点和 Tom 开会两小时"，自动创建日程
-- 💬 **AI 对话助手**：基于 DeepSeek 的流式对话，可询问日程、获取时间管理建议
-- 📊 **数据分析**：周 / 月 / 30 天三种维度的时间分配饼图与统计
-- 🌓 **浅色 / 深色双主题**：完全独立设计的两套配色方案，不是简单反转
-- 💾 **本地 SQLite 存储**：所有数据保存在用户目录，无需账号、无云依赖
+## 核心功能
 
-### 相比原版的 UI/UX 优化
-- ✅ **月视图溢出处理**：超过 3 个事件时显示"+N 更多"按钮（原版直接挤压）
-- ✅ **键盘快捷键**：
-  - `⌘N` / `Ctrl+N` 新建事件
-  - `T` 跳到今天
-  - `←` `→` 上 / 下一周期
-  - `1` `2` `3` 切换日 / 周 / 月视图
-- ✅ **AI 解析确认面板**：每条 AI 解析结果都有勾选框，可挑选导入
-- ✅ **双击事件直接编辑**
-- ✅ **当前时间红线**：日 / 周视图自动显示当前时间，每分钟刷新
-- ✅ **重叠事件智能布局**：列贪心算法，相互重叠的事件并排显示
-- ✅ **饼图重绘**：原版 SVG 改为高质量 QPainter 抗锯齿绘制，环形 + 中心总计
+### 📅 日历
+- 月 / 周 / 日 三种视图，键盘 `1` / `2` / `3` 切换，`←` `→` 翻页，`T` 回到今天。
+- 6 种类别、3 个优先级、9 种颜色标签；周末自动标红。
+- 当前时间线、今日高亮、事件溢出折叠为「+ N 更多」。
 
-## 📁 项目结构
+### ✨ AI 自然语言导入
+- 顶部输入框写一句话，按 Enter：
+  > 「明天下午 3 点项目评审；周三上午健身一小时；本周五出差北京」
+- AI 拆出多条结构化日程，**逐条勾选**后再导入，避免误导入。
+- 每次导入自动写入一个**导入批次**，可整批撤销。
+
+### 🕐 AI 导入历史（新）
+- 顶部 **🕐 导入历史** 按钮（或 `Ctrl+Z`）打开历史面板。
+- 左侧：所有 AI 导入批次，按时间倒序、含原文预览和事件数。
+- 右侧：当前批次的全部事件。
+- 三种动作：
+  - **撤销整批** — 一键删除该批次的所有事件（不可恢复）。
+  - **仅清理历史记录** — 保留事件，仅清掉导入记录（用于「确认无误后归档」）。
+  - **删除选中事件** — 单条删除。
+
+### 💬 AI 对话（带日历感知）
+- 默认开启「让 AI 看到我的日历」开关。
+- 每次提问时，自动把**过去 7 天 + 未来 14 天**内的日程压缩成紧凑文本注入到模型上下文。
+- 因此可以这样问：
+  - 「我下周三有什么安排？」
+  - 「这周哪天最忙？给我减负建议」
+  - 「明天上午有空吗？」
+- 流式输出，气泡 UI。
+
+### 📊 统计分析
+- 7 张卡片 + 图表：总时长、事件数、日均时长、最忙日子；
+- 类别占比环形图、类别时长水平条；
+- 每日趋势折线、节奏热力图（24×7）、来源分布、智能洞察。
+
+### 🎨 视觉
+- **高级成熟 + 现代透明感**：渐变背景 + 红 / 靛双光晕，所有卡片采用 `rgba(255,255,255,0.72)`（深色 `rgba(32,33,40,0.62)`）半透明叠加，整层「玻璃感」清晰可辨。
+- 浅 / 深双主题，左下角一键切换。
+
+---
+
+## 数据存储
 
 ```
-timeplan-cpp/
-├── CMakeLists.txt           # 构建配置
-├── BUILD_MAC.md             # Mac 编译详细步骤
-├── README.md                # 本文件
-├── src/
-│   ├── main.cpp             # 入口
-│   ├── core/                # 业务逻辑层（无 UI 依赖）
-│   │   ├── Types.{h,cpp}    # 数据类型 (CalendarEvent, ScheduleSuggestion)
-│   │   ├── Database.{h,cpp} # SQLite 封装 (QtSql)
-│   │   └── DeepSeekClient.{h,cpp}  # DeepSeek API 客户端 (SSE 流式)
-│   └── ui/                  # 表现层
-│       ├── Theme.{h,cpp}    # 主题单例 + 全局 QSS
-│       ├── Sidebar.{h,cpp}  # 左侧导航
-│       ├── MainWindow.{h,cpp}      # 主窗口
-│       ├── CalendarPage.{h,cpp}    # 日历页（含 AI 解析栏 + 三种视图切换）
-│       ├── MonthView.{h,cpp}       # 月视图绘制
-│       ├── TimeGridView.{h,cpp}    # 日 / 周视图（共用网格）
-│       ├── EventDialog.{h,cpp}     # 事件创建/编辑对话框
-│       ├── AnalyticsPage.{h,cpp}   # 分析页（含 PieChartWidget）
-│       ├── ChatPage.{h,cpp}        # AI 对话页
-│       └── SettingsDialog.{h,cpp}  # 设置（API Key / 主题）
+%LOCALAPPDATA%\TimeMaster\timemaster.db
 ```
 
-## 🚀 编译
+SQLite 单文件，备份它即可保留全部数据。
 
-完整步骤见 [BUILD_MAC.md](./BUILD_MAC.md)。
+## 技术栈
 
-最简单的三条命令（macOS）：
+| | |
+|---|---|
+| 语言 | C++17 |
+| GUI | Qt 6 (Widgets, Network, Sql) |
+| 存储 | SQLite |
+| AI | DeepSeek Chat API (流式) |
+| 构建 | CMake 3.16+ |
+| 平台 | Windows 10/11（本包） / macOS / Linux |
 
-```bash
-brew install qt@6 cmake
-cmake -B build -DCMAKE_PREFIX_PATH=$(brew --prefix qt@6)
-cmake --build build -j
-open build/TimePlan.app
+## 快速编译
+
+详见 [BUILD_WINDOWS.md](BUILD_WINDOWS.md)。简要：
+
+```bat
+build_windows.bat
 ```
 
-Linux 用户需要 `qt6-base-dev`，Windows 需要 Qt 官方安装器或 vcpkg。
+脚本会自动找 Qt、调用 MSVC、运行 `windeployqt`，最终产物在 `build\Release\TimeMaster.exe`。
 
-## ⚙ 配置
+## 项目结构
 
-首次启动后：
-1. 点左下角 **⚙ 设置** 图标
-2. 输入 [DeepSeek API Key](https://platform.deepseek.com/api_keys)
-3. 保存即可使用 AI 功能
+```
+time-master/
+├── CMakeLists.txt
+├── build_windows.bat         # 一键 Windows 构建
+├── BUILD_WINDOWS.md          # Windows 编译指南
+├── README.md
+└── src/
+    ├── main.cpp
+    ├── core/
+    │   ├── Types.{h,cpp}     # 数据模型 + 枚举（含 AiBatchInfo）
+    │   ├── Database.{h,cpp}  # SQLite 持久层（含 ai_batches 表）
+    │   └── DeepSeekClient.{h,cpp}  # API 客户端（含 calendar context 注入）
+    └── ui/
+        ├── Theme.{h,cpp}                # 双主题 + 半透明色板
+        ├── MainWindow.{h,cpp}           # 顶层窗口 + 渐变背景层
+        ├── Sidebar.{h,cpp}              # 左侧导航
+        ├── CalendarPage.{h,cpp}         # 日历主页
+        ├── AnalyticsPage.{h,cpp}        # 分析页
+        ├── ChatPage.{h,cpp}             # AI 对话（含 calendar context）
+        ├── AiHistoryDialog.{h,cpp}      # ★ 新：AI 导入历史
+        ├── EventDialog.{h,cpp}          # 新建 / 编辑事件
+        ├── SettingsDialog.{h,cpp}       # 设置
+        ├── MonthView.{h,cpp} / TimeGridView.{h,cpp}  # 日历视图
+        ├── CategoryPieChart.{h,cpp}
+        └── widgets/
+            ├── StatsCardsWidget
+            ├── HorizontalBarChart
+            ├── DailyTrendChart
+            ├── RhythmCardWidget
+            ├── SourceDistributionWidget
+            └── InsightsWidget
+```
 
-无 API Key 时，AI 解析与对话会提示配置，其他所有功能（手动创建事件、视图切换、分析等）正常使用。
+## 快捷键
 
-## 💾 数据存储位置
+| 键 | 动作 |
+|---|---|
+| `Ctrl+N` | 新建事件 |
+| `Ctrl+Z` | 打开 AI 导入历史（撤销入口） |
+| `T` | 回到今天 |
+| `← / →` | 上一 / 下一时间段 |
+| `1 / 2 / 3` | 切到日 / 周 / 月视图 |
+| `Enter`（AI 输入框） | 解析 |
+| `Enter`（对话框） | 发送 |
 
-| 平台    | 路径                                                       |
-| ------- | ---------------------------------------------------------- |
-| macOS   | `~/Library/Application Support/TimeplanCpp/timeplan.db`    |
-| Linux   | `~/.local/share/TimeplanCpp/timeplan.db`                   |
-| Windows | `%APPDATA%/TimeplanCpp/timeplan.db`                        |
+## 许可
 
-API Key 通过 `QSettings` 加密存储于系统钥匙串/注册表（依赖平台默认实现）。
-
-## 📜 License
-
-MIT
+仅供个人学习与使用。

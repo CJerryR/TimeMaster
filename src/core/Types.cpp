@@ -1,6 +1,6 @@
 #include "Types.h"
 
-namespace timeplan {
+namespace timemaster {
 
 QHash<EventColor, ColorPalette> eventColorsLight() {
     return {
@@ -20,7 +20,6 @@ QHash<EventColor, ColorPalette> eventColorsLight() {
 }
 
 QHash<EventColor, ColorPalette> eventColorsDark() {
-    // 暗色模式下，bg 用低饱和深色，text 用浅色，保证对比度 ≥ 4.5
     return {
         {EventColor::Red,    {QColor("#3f1a1a"), QColor("#fca5a5"), QColor("#7f1d1d"), "红色"}},
         {EventColor::Orange, {QColor("#3d2010"), QColor("#fdba74"), QColor("#7c2d12"), "橙色"}},
@@ -171,4 +170,4 @@ EventColor categoryDefaultColor(EventCategory c) {
     return EventColor::Gray;
 }
 
-} // namespace timeplan
+} // namespace timemaster

@@ -9,7 +9,7 @@
 
 #include "../core/Types.h"
 
-namespace timeplan {
+namespace timemaster {
 
 class Database;
 class CategoryPieChart;
@@ -52,4 +52,4 @@ private:
     QScrollArea *m_scrollArea;
 };
 
-} // namespace timeplan
+} // namespace timemaster

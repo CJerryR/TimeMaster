@@ -3,7 +3,7 @@
 #include "../core/Types.h"
 #include <QWidget>
 
-namespace timeplan {
+namespace timemaster {
 
 class CategoryPieChart : public QWidget {
     Q_OBJECT
@@ -18,4 +18,4 @@ private:
     QList<CategoryStat> m_stats;
 };
 
-} // namespace timeplan
+} // namespace timemaster

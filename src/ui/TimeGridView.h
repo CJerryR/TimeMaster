@@ -4,15 +4,8 @@
 #include <QWidget>
 #include <QTimer>
 
-namespace timeplan {
+namespace timemaster {
 
-/**
- * 时间网格视图（共用基础逻辑）
- * 模式：Day / Week
- * 自绘：左侧时间标尺 + 顶部日期表头 + 中央事件层 + "现在"红线
- *
- * 重叠事件采用列布局：把同一时段的事件按贪心算法分配列，等宽显示
- */
 class TimeGridView : public QWidget {
     Q_OBJECT
 public:
@@ -25,7 +18,7 @@ public:
     void scrollToHour(int hour);
 
 signals:
-    void timeSlotClicked(const QDateTime &dt);   // 双击空白
+    void timeSlotClicked(const QDateTime &dt);
     void eventClicked(const CalendarEvent &event);
 
 protected:
@@ -67,4 +60,4 @@ private:
     QTimer m_minuteTimer;
 };
 
-} // namespace timeplan
+} // namespace timemaster

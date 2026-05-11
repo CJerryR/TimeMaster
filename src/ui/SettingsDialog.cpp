@@ -11,18 +11,18 @@
 #include <QSettings>
 #include <QGroupBox>
 
-namespace timeplan {
+namespace timemaster {
 
 SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidget *parent)
     : QDialog(parent), m_ai(ai)
 {
     setWindowTitle("设置");
-    setMinimumWidth(520);
+    setMinimumWidth(560);
     setObjectName("SettingsDialog");
 
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(24, 20, 24, 20);
-    root->setSpacing(16);
+    root->setContentsMargins(26, 22, 26, 22);
+    root->setSpacing(18);
 
     auto *title = new QLabel("应用设置");
     title->setObjectName("DialogTitle");
@@ -32,9 +32,9 @@ SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidge
     auto *apiBox = new QGroupBox("DeepSeek API");
     apiBox->setObjectName("SettingsGroup");
     auto *apiLayout = new QVBoxLayout(apiBox);
-    apiLayout->setSpacing(8);
+    apiLayout->setSpacing(10);
 
-    auto *hint = new QLabel("输入 DeepSeek API Key 后即可启用 AI 解析与对话功能。\n获取地址：https://platform.deepseek.com/api_keys");
+    auto *hint = new QLabel("配置 API Key 后即可使用 AI 解析与对话。\n申请地址：https://platform.deepseek.com/api_keys");
     hint->setObjectName("FieldHint");
     hint->setWordWrap(true);
     apiLayout->addWidget(hint);
@@ -45,11 +45,13 @@ SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidge
     m_apiKeyEdit->setEchoMode(QLineEdit::Password);
     m_apiKeyEdit->setPlaceholderText("sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     m_apiKeyEdit->setText(m_ai->apiKey());
+    m_apiKeyEdit->setMinimumHeight(38);
 
     auto *eyeBtn = new QPushButton("👁");
     eyeBtn->setObjectName("InlineBtn");
-    eyeBtn->setFixedSize(36, 36);
+    eyeBtn->setFixedSize(38, 38);
     eyeBtn->setToolTip("显示 / 隐藏");
+    eyeBtn->setCursor(Qt::PointingHandCursor);
     connect(eyeBtn, &QPushButton::clicked, this, &SettingsDialog::onToggleVisibility);
 
     keyRow->addWidget(m_apiKeyEdit);
@@ -66,14 +68,19 @@ SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidge
     auto *themeBox = new QGroupBox("外观");
     themeBox->setObjectName("SettingsGroup");
     auto *themeLayout = new QHBoxLayout(themeBox);
+    themeLayout->setSpacing(10);
 
     auto *themeLabel = new QLabel("主题模式");
-    auto *lightBtn = new QPushButton("浅色");
-    auto *darkBtn = new QPushButton("深色");
+    auto *lightBtn = new QPushButton("🌞 浅色");
+    auto *darkBtn = new QPushButton("🌙 深色");
     lightBtn->setObjectName("PillBtn");
     darkBtn->setObjectName("PillBtn");
     lightBtn->setCheckable(true);
     darkBtn->setCheckable(true);
+    lightBtn->setMinimumHeight(34);
+    darkBtn->setMinimumHeight(34);
+    lightBtn->setCursor(Qt::PointingHandCursor);
+    darkBtn->setCursor(Qt::PointingHandCursor);
     lightBtn->setChecked(Theme::instance().mode() == Theme::Light);
     darkBtn->setChecked(Theme::instance().mode() == Theme::Dark);
 
@@ -94,7 +101,7 @@ SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidge
     themeLayout->addWidget(darkBtn);
     root->addWidget(themeBox);
 
-    // ---- 数据库 ----
+    // ---- 数据库路径 ----
     auto *dbBox = new QGroupBox("数据存储");
     dbBox->setObjectName("SettingsGroup");
     auto *dbLayout = new QVBoxLayout(dbBox);
@@ -107,13 +114,16 @@ SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidge
 
     root->addStretch();
 
-    // ---- 按钮 ----
     auto *btnRow = new QHBoxLayout;
     btnRow->addStretch();
     auto *cancelBtn = new QPushButton("取消");
     auto *saveBtn = new QPushButton("保存");
     cancelBtn->setObjectName("SecondaryBtn");
     saveBtn->setObjectName("PrimaryBtn");
+    cancelBtn->setMinimumSize(86, 36);
+    saveBtn->setMinimumSize(86, 36);
+    cancelBtn->setCursor(Qt::PointingHandCursor);
+    saveBtn->setCursor(Qt::PointingHandCursor);
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
     connect(saveBtn, &QPushButton::clicked, this, &SettingsDialog::onSave);
     btnRow->addWidget(cancelBtn);
@@ -137,28 +147,27 @@ void SettingsDialog::onSave() {
     accept();
 }
 
-void SettingsDialog::onTestConnection() {
-    // 预留：可调用 sendChat 测试，本版本由设置后实际使用反馈替代
-}
-
 void SettingsDialog::applyTheme() {
-    setStyleSheet(Theme::instance().globalStylesheet() + QString(R"(
+    auto &t = Theme::instance();
+    setStyleSheet(t.globalStylesheet() + QString(R"(
         QGroupBox#SettingsGroup {
+            background-color: %5;
             border: 1px solid %1;
-            border-radius: 10px;
-            margin-top: 14px;
-            padding: 14px 14px 12px 14px;
-            font-weight: 500;
+            border-radius: 12px;
+            margin-top: 16px;
+            padding: 16px 16px 14px 16px;
+            font-weight: 600;
             color: %2;
         }
         QGroupBox#SettingsGroup::title {
             subcontrol-origin: margin;
-            left: 12px;
-            padding: 0 6px;
+            left: 14px;
+            padding: 0 8px;
+            background-color: %6;
         }
         QLabel#DialogTitle {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 19px;
+            font-weight: 700;
             color: %2;
         }
         QLabel#FieldHint {
@@ -167,10 +176,14 @@ void SettingsDialog::applyTheme() {
         }
         QPushButton#PillBtn {
             border: 1px solid %1;
-            border-radius: 14px;
-            padding: 4px 14px;
+            border-radius: 16px;
+            padding: 4px 18px;
             background-color: transparent;
             color: %3;
+            font-weight: 500;
+        }
+        QPushButton#PillBtn:hover {
+            background-color: %7;
         }
         QPushButton#PillBtn:checked {
             background-color: %4;
@@ -181,33 +194,34 @@ void SettingsDialog::applyTheme() {
             background-color: %4;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 9px;
             padding: 8px 18px;
-            font-weight: 500;
+            font-weight: 600;
         }
-        QPushButton#PrimaryBtn:hover { background-color: %5; }
+        QPushButton#PrimaryBtn:hover { background-color: #dc2626; }
         QPushButton#SecondaryBtn {
             background-color: transparent;
             color: %2;
             border: 1px solid %1;
-            border-radius: 8px;
+            border-radius: 9px;
             padding: 8px 18px;
         }
-        QPushButton#SecondaryBtn:hover { background-color: %6; }
+        QPushButton#SecondaryBtn:hover { background-color: %7; }
         QPushButton#InlineBtn {
-            background-color: %6;
+            background-color: %7;
             border: 1px solid %1;
-            border-radius: 8px;
+            border-radius: 9px;
             color: %2;
         }
         QPushButton#InlineBtn:hover { background-color: %1; }
     )")
-        .arg(Theme::instance().stroke().name())
-        .arg(Theme::instance().textPrimary().name())
-        .arg(Theme::instance().textSecondary().name())
-        .arg(Theme::instance().brand().name())
-        .arg(Theme::instance().brand().darker(110).name())
-        .arg(Theme::instance().bgHover().name()));
+    .arg(t.strokeRgba())
+    .arg(t.textPrimary().name())
+    .arg(t.textSecondary().name())
+    .arg(t.brand().name())
+    .arg(t.cardBgRgba())
+    .arg(t.bgContainer().name())
+    .arg(t.cardBgHoverRgba()));
 }
 
-} // namespace timeplan
+} // namespace timemaster

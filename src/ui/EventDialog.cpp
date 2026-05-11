@@ -17,12 +17,12 @@
 #include <QPainterPath>
 #include <QMessageBox>
 
-namespace timeplan {
+namespace timemaster {
 
 EventDialog::EventDialog(QWidget *parent) : QDialog(parent) {
     setWindowTitle("事件");
     setModal(true);
-    setMinimumSize(540, 640);
+    setMinimumSize(560, 660);
     buildUi();
     applyTheme();
     connect(&Theme::instance(), &Theme::changed, this, &EventDialog::applyTheme);
@@ -190,7 +190,6 @@ void EventDialog::buildUi() {
 
     root->addStretch(1);
 
-    // 底部按钮
     {
         auto *row = new QHBoxLayout();
         m_deleteButton = new QPushButton("删除");
@@ -227,6 +226,8 @@ void EventDialog::applyTheme() {
 void EventDialog::setupForCreate(const QDateTime &defaultStart) {
     m_isEditing = false;
     m_eventId.clear();
+    m_aiBatchId.clear();
+    m_source = EventSource::Manual;
     m_createdAt = QDateTime::currentDateTime();
 
     m_titleEdit->clear();
@@ -258,6 +259,8 @@ void EventDialog::setupForCreate(const QDateTime &defaultStart) {
 void EventDialog::setupForEdit(const CalendarEvent &event) {
     m_isEditing = true;
     m_eventId = event.id;
+    m_aiBatchId = event.aiBatchId;
+    m_source = event.source;
     m_createdAt = event.createdAt;
 
     m_titleEdit->setText(event.title);
@@ -295,7 +298,6 @@ void EventDialog::onCategoryClicked(int idx) {
     auto cats = allCategories();
     if (idx < 0 || idx >= cats.size()) return;
     m_selectedCategory = cats[idx];
-    // 切换类别时自动应用默认色
     m_selectedColor = categoryDefaultColor(m_selectedCategory);
     refreshCategoryButtons();
     refreshColorButtons();
@@ -318,7 +320,7 @@ void EventDialog::onColorClicked(int idx) {
 void EventDialog::refreshCategoryButtons() {
     auto cats = allCategories();
     auto &theme = Theme::instance();
-    QString brandLight = QString("rgba(%1,%2,%3,12)")
+    QString brandLight = QString("rgba(%1,%2,%3,30)")
                             .arg(theme.brand().red()).arg(theme.brand().green()).arg(theme.brand().blue());
     for (int i = 0; i < m_categoryButtons.size(); ++i) {
         auto *btn = m_categoryButtons[i];
@@ -343,7 +345,7 @@ void EventDialog::refreshCategoryButtons() {
 
 void EventDialog::refreshPriorityButtons() {
     auto prios = allPriorities();
-    QStringList tints = {"#dc2626", "#0066ff", "#71717a"};
+    QStringList tints = {"#dc2626", "#4f46e5", "#71717a"};
     for (int i = 0; i < m_priorityButtons.size(); ++i) {
         auto *btn = m_priorityButtons[i];
         bool active = (prios[i] == m_selectedPriority);
@@ -429,10 +431,11 @@ CalendarEvent EventDialog::result() const {
     e.location = m_locationEdit->text().trimmed();
     e.reminder = m_reminderSpin->value();
     e.priority = m_selectedPriority;
-    e.source = EventSource::Manual;
+    e.source = m_isEditing ? m_source : EventSource::Manual;
+    e.aiBatchId = m_aiBatchId;
     e.createdAt = m_isEditing ? m_createdAt : QDateTime::currentDateTime();
     e.updatedAt = QDateTime::currentDateTime();
     return e;
 }
 
-} // namespace timeplan
+} // namespace timemaster

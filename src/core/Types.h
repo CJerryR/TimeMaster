@@ -7,7 +7,7 @@
 #include <QHash>
 #include <QList>
 
-namespace timeplan {
+namespace timemaster {
 
 enum class CalendarView { Day, Week, Month };
 
@@ -45,6 +45,7 @@ struct CalendarEvent {
     int reminder = 15;
     EventPriority priority = EventPriority::Normal;
     EventSource source = EventSource::Manual;
+    QString aiBatchId;        // 关联的 AI 导入批次（用于撤销）
     QDateTime createdAt;
     QDateTime updatedAt;
 
@@ -63,6 +64,16 @@ struct ScheduleSuggestion {
     EventPriority priority = EventPriority::Normal;
     EventColor color = EventColor::Blue;
     bool allDay = false;
+};
+
+// AI 导入批次（一次 AI 解析对应一个批次，里面有若干事件）
+struct AiBatchInfo {
+    QString id;
+    QString sourceText;       // 原始用户输入
+    QString sourceType;       // "parse" | "chat"
+    QDateTime createdAt;
+    int eventCount = 0;       // 批次内事件总数（即便部分被删，仍记录原始数）
+    int aliveCount = 0;       // 当前还存在的事件数
 };
 
 struct CategoryStat {
@@ -102,14 +113,13 @@ EventPriority stringToPriority(const QString &s);
 QString sourceToString(EventSource s);
 EventSource stringToSource(const QString &s);
 
-// 全部分类用于循环
 QList<EventCategory> allCategories();
 QList<EventColor> allColors();
 QList<EventPriority> allPriorities();
 
-// 类目固定显示色，避免饼图色乱跳
 EventColor categoryDefaultColor(EventCategory c);
 
-} // namespace timeplan
+} // namespace timemaster
 
-Q_DECLARE_METATYPE(timeplan::CalendarEvent)
+Q_DECLARE_METATYPE(timemaster::CalendarEvent)
+Q_DECLARE_METATYPE(timemaster::AiBatchInfo)

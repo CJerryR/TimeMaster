@@ -7,11 +7,10 @@
 #include <QUuid>
 #include <QDebug>
 #include <QVariant>
-
-namespace timeplan {
+namespace timemaster {
 
 Database::Database(QObject *parent) : QObject(parent) {
-    m_connectionName = QStringLiteral("timeplan-main");
+    m_connectionName = QStringLiteral("timemaster-main");
 }
 
 Database::~Database() {
@@ -20,16 +19,9 @@ Database::~Database() {
 }
 
 bool Database::open() {
-    QString appDir = QCoreApplication::applicationDirPath();
-
-    // macOS .app 包内路径：Contents/MacOS → 回退到 .app 所在目录
-    QDir dir(appDir);
-    if (dir.dirName() == "MacOS") {
-        dir.cdUp(); dir.cdUp(); dir.cdUp(); // MacOS → Contents → .app → 上级目录
-    }
-    QString dataDir = dir.absolutePath();
+    QString dataDir = QCoreApplication::applicationDirPath();
     QDir().mkpath(dataDir);
-    m_dbPath = dataDir + "/timeplan.db";
+    m_dbPath = dataDir + "/timemaster.db";
 
     m_db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
     m_db.setDatabaseName(m_dbPath);
@@ -43,7 +35,9 @@ bool Database::open() {
     q.exec("PRAGMA journal_mode = WAL");
     q.exec("PRAGMA foreign_keys = ON");
 
-    return initSchema();
+    if (!initSchema()) return false;
+    migrateSchema();
+    return true;
 }
 
 bool Database::initSchema() {
@@ -63,6 +57,7 @@ bool Database::initSchema() {
             reminder INTEGER DEFAULT 15,
             priority TEXT DEFAULT 'normal',
             source TEXT DEFAULT 'manual',
+            ai_batch_id TEXT DEFAULT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
@@ -74,8 +69,25 @@ bool Database::initSchema() {
 
     q.exec("CREATE INDEX IF NOT EXISTS idx_events_start ON events(start_date)");
     q.exec("CREATE INDEX IF NOT EXISTS idx_events_category ON events(category)");
+    q.exec("CREATE INDEX IF NOT EXISTS idx_events_batch ON events(ai_batch_id)");
 
-    // 简单的对话历史（用于 ChatPage）
+    // AI 批次表
+    ok = q.exec(R"SQL(
+        CREATE TABLE IF NOT EXISTS ai_batches (
+            id TEXT PRIMARY KEY,
+            source_text TEXT NOT NULL,
+            source_type TEXT DEFAULT 'parse',
+            event_count INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL
+        )
+    )SQL");
+    if (!ok) {
+        qWarning() << "Create ai_batches table failed:" << q.lastError().text();
+    }
+
+    q.exec("CREATE INDEX IF NOT EXISTS idx_batches_created ON ai_batches(created_at)");
+
+    // 简单的对话历史
     q.exec(R"SQL(
         CREATE TABLE IF NOT EXISTS chat_messages (
             id TEXT PRIMARY KEY,
@@ -86,6 +98,13 @@ bool Database::initSchema() {
     )SQL");
 
     return true;
+}
+
+void Database::migrateSchema() {
+    // 旧版数据库可能没有 ai_batch_id 列，尝试添加（失败说明已存在）
+    QSqlQuery q(m_db);
+    q.exec("ALTER TABLE events ADD COLUMN ai_batch_id TEXT DEFAULT NULL");
+    // 注意：q.lastError() 在列已存在时会报错，正常忽略
 }
 
 QString Database::generateId() {
@@ -106,6 +125,7 @@ CalendarEvent Database::rowToEvent(const QSqlQuery &q) {
     e.reminder = q.value("reminder").toInt();
     e.priority = stringToPriority(q.value("priority").toString());
     e.source = stringToSource(q.value("source").toString());
+    e.aiBatchId = q.value("ai_batch_id").toString();
     e.createdAt = QDateTime::fromString(q.value("created_at").toString(), Qt::ISODate);
     e.updatedAt = QDateTime::fromString(q.value("updated_at").toString(), Qt::ISODate);
     return e;
@@ -142,10 +162,10 @@ bool Database::insertEvent(const CalendarEvent &event) {
     q.prepare(R"SQL(
         INSERT INTO events
         (id, title, description, start_date, end_date, all_day, color, category,
-         location, reminder, priority, source, created_at, updated_at)
+         location, reminder, priority, source, ai_batch_id, created_at, updated_at)
         VALUES
         (:id, :title, :description, :start_date, :end_date, :all_day, :color, :category,
-         :location, :reminder, :priority, :source, :created_at, :updated_at)
+         :location, :reminder, :priority, :source, :ai_batch_id, :created_at, :updated_at)
     )SQL");
     q.bindValue(":id", event.id);
     q.bindValue(":title", event.title);
@@ -159,6 +179,7 @@ bool Database::insertEvent(const CalendarEvent &event) {
     q.bindValue(":reminder", event.reminder);
     q.bindValue(":priority", priorityToString(event.priority));
     q.bindValue(":source", sourceToString(event.source));
+    q.bindValue(":ai_batch_id", event.aiBatchId.isEmpty() ? QVariant() : QVariant(event.aiBatchId));
     q.bindValue(":created_at", event.createdAt.toString(Qt::ISODate));
     q.bindValue(":updated_at", event.updatedAt.toString(Qt::ISODate));
 
@@ -167,6 +188,7 @@ bool Database::insertEvent(const CalendarEvent &event) {
         return false;
     }
     emit eventsChanged();
+    if (!event.aiBatchId.isEmpty()) emit aiBatchesChanged();
     return true;
 }
 
@@ -217,8 +239,104 @@ bool Database::deleteEvent(const QString &id) {
         return false;
     }
     emit eventsChanged();
+    emit aiBatchesChanged();   // 可能影响某个 batch 的存活计数
     return true;
 }
+
+// =================== AI 批次 ===================
+
+QString Database::createAiBatch(const QString &sourceText, const QString &sourceType) {
+    QString id = generateId();
+    QSqlQuery q(m_db);
+    q.prepare(R"SQL(
+        INSERT INTO ai_batches (id, source_text, source_type, event_count, created_at)
+        VALUES (:id, :src, :type, 0, :now)
+    )SQL");
+    q.bindValue(":id", id);
+    q.bindValue(":src", sourceText);
+    q.bindValue(":type", sourceType);
+    q.bindValue(":now", QDateTime::currentDateTime().toString(Qt::ISODate));
+    if (!q.exec()) {
+        qWarning() << "createAiBatch:" << q.lastError().text();
+        return QString();
+    }
+    emit aiBatchesChanged();
+    return id;
+}
+
+QList<AiBatchInfo> Database::getAiBatches() {
+    QList<AiBatchInfo> result;
+    QSqlQuery q(m_db);
+    bool ok = q.exec(R"SQL(
+        SELECT b.id, b.source_text, b.source_type, b.created_at,
+               (SELECT COUNT(*) FROM events e WHERE e.ai_batch_id = b.id) AS alive_count
+        FROM ai_batches b
+        ORDER BY b.created_at DESC
+    )SQL");
+    if (!ok) {
+        qWarning() << "getAiBatches:" << q.lastError().text();
+        return result;
+    }
+    while (q.next()) {
+        AiBatchInfo b;
+        b.id = q.value("id").toString();
+        b.sourceText = q.value("source_text").toString();
+        b.sourceType = q.value("source_type").toString();
+        b.createdAt = QDateTime::fromString(q.value("created_at").toString(), Qt::ISODate);
+        b.aliveCount = q.value("alive_count").toInt();
+        b.eventCount = b.aliveCount;   // 同步显示当前存活的
+        result.append(b);
+    }
+    return result;
+}
+
+QList<CalendarEvent> Database::getBatchEvents(const QString &batchId) {
+    QList<CalendarEvent> list;
+    QSqlQuery q(m_db);
+    q.prepare("SELECT * FROM events WHERE ai_batch_id = :b ORDER BY start_date ASC");
+    q.bindValue(":b", batchId);
+    if (!q.exec()) {
+        qWarning() << "getBatchEvents:" << q.lastError().text();
+        return list;
+    }
+    while (q.next()) list.append(rowToEvent(q));
+    return list;
+}
+
+bool Database::deleteBatch(const QString &batchId) {
+    QSqlQuery q(m_db);
+    // 删事件
+    q.prepare("DELETE FROM events WHERE ai_batch_id = :b");
+    q.bindValue(":b", batchId);
+    if (!q.exec()) {
+        qWarning() << "deleteBatch events:" << q.lastError().text();
+        return false;
+    }
+    // 删批次
+    q.prepare("DELETE FROM ai_batches WHERE id = :b");
+    q.bindValue(":b", batchId);
+    if (!q.exec()) {
+        qWarning() << "deleteBatch record:" << q.lastError().text();
+        return false;
+    }
+    emit eventsChanged();
+    emit aiBatchesChanged();
+    return true;
+}
+
+bool Database::clearBatchRecord(const QString &batchId) {
+    QSqlQuery q(m_db);
+    q.prepare("UPDATE events SET ai_batch_id = NULL WHERE ai_batch_id = :b");
+    q.bindValue(":b", batchId);
+    q.exec();
+    q.prepare("DELETE FROM ai_batches WHERE id = :b");
+    q.bindValue(":b", batchId);
+    if (!q.exec()) return false;
+    emit aiBatchesChanged();
+    return true;
+}
+
+// =================== 统计 ===================
 
 QList<CategoryStat> Database::getCategoryStats(const QDateTime &start, const QDateTime &end) {
     QList<CategoryStat> stats;
@@ -394,4 +512,4 @@ int Database::eventCountBySource(EventSource source, const QDateTime &start, con
     return 0;
 }
 
-} // namespace timeplan
+} // namespace timemaster

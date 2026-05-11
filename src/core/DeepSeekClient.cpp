@@ -8,24 +8,38 @@
 #include <QRegularExpression>
 #include <QDebug>
 
-namespace timeplan {
+namespace timemaster {
 
 namespace {
-constexpr const char *kBaseUrl = "https://api.deepseek.com/v1/chat/completions";
-constexpr const char *kModel = "deepseek-chat";
+constexpr const char *kDefaultBaseUrl = "https://api.deepseek.com/v1/chat/completions";
+constexpr const char *kDefaultModel = "deepseek-chat";
 
 const QString kSystemPromptChat = QStringLiteral(
-    "你是「时智」——智能时间规划师。请用简洁、结构化、可操作的中文回复用户。"
-    "面向日程规划、时间分析、效率建议等场景。回复风格：精炼，要点突出，不啰嗦。"
+    "你是「时间管理大师」（Time Master）—— 一位专业的时间规划顾问，"
+    "用简洁、结构化、可操作的中文与用户交流。"
+    "你的回复要点明确，避免啰嗦。当用户询问日程时，参考下方提供的「用户当前日历」实事求是地回答；"
+    "如果某天没有安排，直接告诉用户「这天目前没有安排」，不要编造。"
 );
 } // namespace
 
-DeepSeekClient::DeepSeekClient(QObject *parent) : QObject(parent) {
+DeepSeekClient::DeepSeekClient(QObject *parent)
+    : QObject(parent),
+      m_baseUrl(kDefaultBaseUrl),
+      m_model(kDefaultModel)
+{
     m_nam = new QNetworkAccessManager(this);
 }
 
 void DeepSeekClient::setApiKey(const QString &key) {
     m_apiKey = key.trimmed();
+}
+
+void DeepSeekClient::setBaseUrl(const QString &url) {
+    m_baseUrl = url.isEmpty() ? QString(kDefaultBaseUrl) : url;
+}
+
+void DeepSeekClient::setModel(const QString &model) {
+    m_model = model.isEmpty() ? QString(kDefaultModel) : model;
 }
 
 void DeepSeekClient::abort() {
@@ -36,7 +50,9 @@ void DeepSeekClient::abort() {
     }
 }
 
-void DeepSeekClient::sendChat(const QString &userMessage, const QString &systemPrompt) {
+void DeepSeekClient::sendChat(const QString &userMessage,
+                              const QString &systemPrompt,
+                              const QString &calendarContext) {
     if (!hasApiKey()) {
         emit chatError("未配置 DeepSeek API Key，请到「设置」填写。");
         return;
@@ -47,10 +63,20 @@ void DeepSeekClient::sendChat(const QString &userMessage, const QString &systemP
     m_buffer.clear();
 
     QJsonArray messages;
+
+    // 第一条 system：基础角色
     QJsonObject sys;
     sys["role"] = "system";
     sys["content"] = systemPrompt.isEmpty() ? kSystemPromptChat : systemPrompt;
     messages.append(sys);
+
+    // 第二条 system：日历上下文（可选）
+    if (!calendarContext.isEmpty()) {
+        QJsonObject ctx;
+        ctx["role"] = "system";
+        ctx["content"] = calendarContext;
+        messages.append(ctx);
+    }
 
     QJsonObject usr;
     usr["role"] = "user";
@@ -73,7 +99,7 @@ void DeepSeekClient::parseSchedule(const QString &text) {
     QDateTime now = QDateTime::currentDateTime();
     QString todayIso = now.toString("yyyy-MM-dd");
     static const char *weekdays[] = {"周日","周一","周二","周三","周四","周五","周六"};
-    int wd = now.date().dayOfWeek() % 7; // Qt 1=Mon..7=Sun -> 改为 0=Sun..6=Sat
+    int wd = now.date().dayOfWeek() % 7;
     if (wd < 0) wd = 0;
 
     QString sys = QString(
@@ -102,13 +128,13 @@ void DeepSeekClient::parseSchedule(const QString &text) {
 }
 
 void DeepSeekClient::sendRequestStream(const QJsonArray &messages, bool forParse) {
-    QNetworkRequest req{QUrl(kBaseUrl)};
+    QNetworkRequest req{QUrl(m_baseUrl)};
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     req.setRawHeader("Authorization", QByteArray("Bearer ") + m_apiKey.toUtf8());
     req.setRawHeader("Accept", "text/event-stream");
 
     QJsonObject body;
-    body["model"] = kModel;
+    body["model"] = m_model;
     body["messages"] = messages;
     body["stream"] = true;
     body["temperature"] = forParse ? 0.2 : 0.7;
@@ -161,7 +187,6 @@ void DeepSeekClient::onFinished() {
     QString errStr;
     if (m_reply->error() != QNetworkReply::NoError && !aborted) {
         errStr = m_reply->errorString();
-        // 读取错误响应正文
         QByteArray body = m_reply->readAll();
         if (!body.isEmpty()) errStr += "\n" + QString::fromUtf8(body.left(500));
     }
@@ -193,9 +218,7 @@ QList<ScheduleSuggestion> DeepSeekClient::parseJsonResponse(const QString &raw) 
     QList<ScheduleSuggestion> list;
     if (raw.isEmpty()) return list;
 
-    // 尝试找 {...} 段
     QString jsonStr = raw.trimmed();
-    // 去掉可能的 markdown 包裹
     static QRegularExpression fence(R"(^```(?:json)?\s*|\s*```$)");
     jsonStr.remove(fence);
 
@@ -244,4 +267,4 @@ QList<ScheduleSuggestion> DeepSeekClient::parseJsonResponse(const QString &raw) 
     return list;
 }
 
-} // namespace timeplan
+} // namespace timemaster

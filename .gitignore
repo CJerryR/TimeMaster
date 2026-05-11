@@ -1,45 +1,35 @@
 # 构建产物
 build/
-dist/
-out/
-*.o
 *.obj
-
-# IDE
-.vscode/
-.idea/
-*.user
-*.user.*
-CMakeUserPresets.json
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-
-# Qt
-moc_*.cpp
-moc_*.h
-qrc_*.cpp
-ui_*.h
-*.qmlc
-*.jsc
-
-# macOS
-.DS_Store
-*.app
-*.dSYM/
-
-# Windows
-*.exe
+*.o
 *.dll
-*.pdb
+*.exe
+*.a
+*.lib
+*.d
 
-# 数据库
-*.db
-*.db-shm
-*.db-wal
+# IDE 配置
+.vs/
+*.user
+CMakeLists.txt.user
 
-# 临时
-*.swp
-*~
-.cache/
+# 依赖目录
+vcpkg_installed/
+.conan/
+
+# 临时文件
+*.log
+*.tmp
+__MACOSX/
+.DS_Store
+
+# 版本归档（不上传）
+V2.0/
+V3.0/
+V3.1/
+_temp/
+
+# AI 工具
+claude/
+.claude/
+.workbuddy/
