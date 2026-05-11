@@ -1,4 +1,5 @@
 #include "DeepSeekClient.h"
+#include "I18n.h"
 
 #include <QNetworkRequest>
 #include <QJsonDocument>
@@ -254,7 +255,8 @@ QList<ScheduleSuggestion> DeepSeekClient::parseJsonResponse(const QString &raw) 
         }
         s.durationMinutes = static_cast<int>(s.startDate.secsTo(s.endDate) / 60);
         if (s.title.isEmpty()) {
-            s.title = QString("未命名 · %1 · %2")
+            s.title = QString("%1 · %2 · %3")
+                .arg(I18n::t("ai.results.untitled"))
                 .arg(categoryLabel(s.category))
                 .arg(s.startDate.toString("M/d"));
         }

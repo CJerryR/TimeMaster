@@ -10,8 +10,11 @@
 #include "widgets/InsightsWidget.h"
 #include "widgets/ComparisonWidget.h"
 #include "widgets/MotivationWidget.h"
+#include "widgets/EmptyState.h"
 #include "../core/Database.h"
+#include "../core/I18n.h"
 
+#include <QStackedLayout>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QScrollArea>
@@ -20,81 +23,96 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QDate>
-#include <QTimer>
+#include <QSignalBlocker>
 
 namespace timemaster {
 
-static constexpr int CARD_RADIUS = 14;
+// V4 § 6.5: cards 12px
+static constexpr int CARD_RADIUS = 12;
 
 AnalyticsPage::AnalyticsPage(Database *db, QWidget *parent)
     : QWidget(parent), m_db(db)
 {
     buildUI();
+    applyLanguage();
     applyTheme();
-    connect(&Theme::instance(), &Theme::changed, this, &AnalyticsPage::applyTheme);
-    // 数据库变化时自动刷新（确保新加入的日程立刻反映在分析里）
+    connect(&Theme::instance(), &Theme::changed,        this, &AnalyticsPage::applyTheme);
+    connect(&I18n::instance(),  &I18n::languageChanged, this, &AnalyticsPage::applyLanguage);
     connect(m_db, &Database::eventsChanged, this, &AnalyticsPage::refresh);
+}
+
+static QLabel *makeSectionHeader(QList<QFrame*> *accentBars) {
+    auto *row = new QLabel;
+    row->setObjectName("AnalyticsSection");
+    row->setContentsMargins(0, 12, 0, 4);
+    row->setProperty("class", "section");
+    Q_UNUSED(accentBars);
+    return row;
 }
 
 void AnalyticsPage::buildUI() {
     auto *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(20, 18, 20, 18);
+    outerLayout->setContentsMargins(24, 20, 24, 20);
     outerLayout->setSpacing(14);
 
-    // === 标题栏 ===
+    // === Top bar ===
     auto *header = new QHBoxLayout();
     header->setContentsMargins(0, 0, 0, 0);
     header->setSpacing(8);
 
     m_titleIcon = new QLabel;
-    m_titleIcon->setFixedSize(26, 26);
+    m_titleIcon->setFixedSize(24, 24);
     header->addWidget(m_titleIcon);
 
-    m_title = new QLabel("统计分析");
+    m_title = new QLabel;
     m_title->setObjectName("AnalyticsTitle");
     QFont titleFont;
     titleFont.setPointSize(17);
-    titleFont.setWeight(QFont::Bold);
+    titleFont.setWeight(QFont::DemiBold);
     m_title->setFont(titleFont);
     header->addWidget(m_title);
     header->addStretch();
 
-    // 刷新按钮（item 10）
-    m_refreshBtn = new QPushButton(" 刷新");
+    m_refreshBtn = new QPushButton;
     m_refreshBtn->setObjectName("RefreshBtn");
-    m_refreshBtn->setMinimumHeight(34);
+    m_refreshBtn->setMinimumHeight(32);
     m_refreshBtn->setMinimumWidth(78);
     m_refreshBtn->setIconSize(QSize(16, 16));
     m_refreshBtn->setCursor(Qt::PointingHandCursor);
-    m_refreshBtn->setToolTip("立即重新读取数据库");
     connect(m_refreshBtn, &QPushButton::clicked, this, &AnalyticsPage::refresh);
     header->addWidget(m_refreshBtn);
 
     m_rangeCombo = new QComboBox();
-    m_rangeCombo->addItems({"本周", "本月", "近 7 天", "近 30 天"});
-    m_rangeCombo->setFixedWidth(130);
-    m_rangeCombo->setMinimumHeight(34);
+    m_rangeCombo->setFixedWidth(140);
+    m_rangeCombo->setMinimumHeight(32);
     header->addWidget(m_rangeCombo);
     outerLayout->addLayout(header);
 
-    // === 滚动内容 ===
+    // === Scrollable content host with EmptyState overlay (V4 § 5.2) ===
+    m_contentHost = new QWidget;
+    auto *overlay = new QStackedLayout(m_contentHost);
+    overlay->setContentsMargins(0, 0, 0, 0);
+    overlay->setStackingMode(QStackedLayout::StackAll);
+
     auto *scroll = new QScrollArea();
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
     scroll->setStyleSheet("QScrollArea{background:transparent;}");
     scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    auto *content = new QWidget();
-    content->setStyleSheet("QWidget{background:transparent;}");
-    auto *contentLayout = new QVBoxLayout(content);
+    m_scrollContent = new QWidget();
+    m_scrollContent->setStyleSheet("QWidget{background:transparent;}");
+    auto *contentLayout = new QVBoxLayout(m_scrollContent);
     contentLayout->setContentsMargins(0, 0, 0, 24);
-    contentLayout->setSpacing(16);
+    contentLayout->setSpacing(14);
 
-    // 1. 顶部四个数字卡
+    // ---- Section 1: Overview ----
+    m_secOverview = makeSectionHeader(&m_sectionAccentBars);
+    contentLayout->addWidget(m_secOverview);
+
     m_statsCards = new StatsCardsWidget();
     contentLayout->addWidget(m_statsCards);
 
-    // 2. 「Daily 一句话 + 数据洞察」(item 11)
     auto *motivationFrame = makeCardFrame();
     auto *motLay = new QVBoxLayout(motivationFrame);
     motLay->setContentsMargins(22, 18, 22, 18);
@@ -102,7 +120,6 @@ void AnalyticsPage::buildUI() {
     motLay->addWidget(m_motivationWidget);
     contentLayout->addWidget(motivationFrame);
 
-    // 3. 过去 / 未来一周对比 (item 11)
     auto *cmpFrame = makeCardFrame();
     auto *cmpLay = new QVBoxLayout(cmpFrame);
     cmpLay->setContentsMargins(20, 16, 20, 16);
@@ -110,16 +127,19 @@ void AnalyticsPage::buildUI() {
     cmpLay->addWidget(m_comparisonWidget);
     contentLayout->addWidget(cmpFrame);
 
-    // 4. 饼图 + 横条
+    // ---- Section 2: Time structure ----
+    m_secStructure = makeSectionHeader(&m_sectionAccentBars);
+    contentLayout->addWidget(m_secStructure);
+
     auto *chartRow = new QHBoxLayout();
     chartRow->setSpacing(14);
 
     auto *pieFrame = makeCardFrame();
     auto *pieLay = new QVBoxLayout(pieFrame);
     pieLay->setContentsMargins(20, 16, 20, 16);
-    auto *pieTitle = new QLabel("类别占比");
-    pieTitle->setProperty("class", "subtitle");
-    pieLay->addWidget(pieTitle);
+    m_pieTitle = new QLabel;
+    m_pieTitle->setProperty("class", "subtitle");
+    pieLay->addWidget(m_pieTitle);
     m_pieChart = new CategoryPieChart();
     pieLay->addWidget(m_pieChart, 1);
     chartRow->addWidget(pieFrame, 4);
@@ -127,47 +147,43 @@ void AnalyticsPage::buildUI() {
     auto *barFrame = makeCardFrame();
     auto *barLay = new QVBoxLayout(barFrame);
     barLay->setContentsMargins(20, 16, 20, 16);
-    auto *barTitle = new QLabel("类别时长");
-    barTitle->setProperty("class", "subtitle");
-    barLay->addWidget(barTitle);
+    m_barTitle = new QLabel;
+    m_barTitle->setProperty("class", "subtitle");
+    barLay->addWidget(m_barTitle);
     m_barChart = new HorizontalBarChart();
     barLay->addWidget(m_barChart, 1);
     chartRow->addWidget(barFrame, 6);
 
     contentLayout->addLayout(chartRow);
 
-    // 5. 每日趋势
+    auto *sourceFrame = makeCardFrame();
+    auto *sourceLay = new QVBoxLayout(sourceFrame);
+    sourceLay->setContentsMargins(20, 16, 20, 16);
+    m_sourceWidget = new SourceDistributionWidget();
+    sourceLay->addWidget(m_sourceWidget, 1);
+    contentLayout->addWidget(sourceFrame);
+
+    // ---- Section 3: Behavioural insights ----
+    m_secInsights = makeSectionHeader(&m_sectionAccentBars);
+    contentLayout->addWidget(m_secInsights);
+
     auto *trendFrame = makeCardFrame();
     auto *trendLay = new QVBoxLayout(trendFrame);
     trendLay->setContentsMargins(20, 16, 20, 16);
-    auto *trendTitle = new QLabel("每日趋势");
-    trendTitle->setProperty("class", "subtitle");
-    trendLay->addWidget(trendTitle);
+    m_trendTitle = new QLabel;
+    m_trendTitle->setProperty("class", "subtitle");
+    trendLay->addWidget(m_trendTitle);
     m_trendChart = new DailyTrendChart();
     trendLay->addWidget(m_trendChart, 1);
     contentLayout->addWidget(trendFrame);
-
-    // 6. 节奏 + 来源
-    auto *bottomRow = new QHBoxLayout();
-    bottomRow->setSpacing(14);
 
     auto *rhythmFrame = makeCardFrame();
     auto *rhythmLay = new QVBoxLayout(rhythmFrame);
     rhythmLay->setContentsMargins(20, 16, 20, 16);
     m_rhythmWidget = new RhythmCardWidget();
     rhythmLay->addWidget(m_rhythmWidget, 1);
-    bottomRow->addWidget(rhythmFrame, 5);
+    contentLayout->addWidget(rhythmFrame);
 
-    auto *sourceFrame = makeCardFrame();
-    auto *sourceLay = new QVBoxLayout(sourceFrame);
-    sourceLay->setContentsMargins(20, 16, 20, 16);
-    m_sourceWidget = new SourceDistributionWidget();
-    sourceLay->addWidget(m_sourceWidget, 1);
-    bottomRow->addWidget(sourceFrame, 5);
-
-    contentLayout->addLayout(bottomRow);
-
-    // 7. 智能洞察
     auto *insightsFrame = makeCardFrame();
     auto *insightsLay = new QVBoxLayout(insightsFrame);
     insightsLay->setContentsMargins(20, 16, 20, 16);
@@ -175,8 +191,13 @@ void AnalyticsPage::buildUI() {
     insightsLay->addWidget(m_insightsWidget, 1);
     contentLayout->addWidget(insightsFrame);
 
-    scroll->setWidget(content);
-    outerLayout->addWidget(scroll, 1);
+    scroll->setWidget(m_scrollContent);
+    overlay->addWidget(scroll);
+
+    m_emptyState = new EmptyState;
+    overlay->addWidget(m_emptyState);
+
+    outerLayout->addWidget(m_contentHost, 1);
     m_scrollArea = scroll;
 
     connect(m_rangeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -188,6 +209,36 @@ QFrame *AnalyticsPage::makeCardFrame() {
     f->setObjectName("cardFrame");
     f->setFrameShape(QFrame::NoFrame);
     return f;
+}
+
+void AnalyticsPage::applyLanguage() {
+    if (m_title)        m_title->setText(I18n::t("analytics.title"));
+    if (m_refreshBtn)   m_refreshBtn->setText(I18n::t("analytics.refresh"));
+    if (m_refreshBtn)   m_refreshBtn->setToolTip(I18n::t("analytics.refresh_tip"));
+
+    if (m_rangeCombo) {
+        int idx = m_rangeCombo->currentIndex();
+        QSignalBlocker blocker(m_rangeCombo);
+        m_rangeCombo->clear();
+        m_rangeCombo->addItem(I18n::t("analytics.range.this_week"));
+        m_rangeCombo->addItem(I18n::t("analytics.range.this_month"));
+        m_rangeCombo->addItem(I18n::t("analytics.range.last_7"));
+        m_rangeCombo->addItem(I18n::t("analytics.range.last_30"));
+        m_rangeCombo->setCurrentIndex(idx < 0 ? 2 : idx);
+    }
+
+    if (m_secOverview)  m_secOverview->setText(I18n::t("analytics.section.overview"));
+    if (m_secStructure) m_secStructure->setText(I18n::t("analytics.section.structure"));
+    if (m_secInsights)  m_secInsights->setText(I18n::t("analytics.section.insights"));
+
+    if (m_pieTitle)   m_pieTitle->setText(I18n::t("widget.category_share"));
+    if (m_barTitle)   m_barTitle->setText(I18n::t("widget.category_time"));
+    if (m_trendTitle) m_trendTitle->setText(I18n::t("widget.daily_trend"));
+
+    if (m_emptyState) {
+        m_emptyState->setTitle(I18n::t("empty.analytics.title"));
+        m_emptyState->setSubtitle(I18n::t("empty.analytics.subtitle"));
+    }
 }
 
 void AnalyticsPage::refresh() {
@@ -215,12 +266,12 @@ void AnalyticsPage::refresh() {
         break;
     }
 
-    auto stats = m_db->getCategoryStats(start, end);
-    auto daily = m_db->getDailySummaries(start, end);
-    auto hourly = m_db->getHourlyDistribution(start, end);
-    int manualC = m_db->eventCountBySource(EventSource::Manual, start, end);
-    int aiC = m_db->eventCountBySource(EventSource::AiParse, start, end);
-    int chatC = m_db->eventCountBySource(EventSource::Chat, start, end);
+    auto stats   = m_db->getCategoryStats(start, end);
+    auto daily   = m_db->getDailySummaries(start, end);
+    auto hourly  = m_db->getHourlyDistribution(start, end);
+    int manualC  = m_db->eventCountBySource(EventSource::Manual,  start, end);
+    int aiC      = m_db->eventCountBySource(EventSource::AiParse, start, end);
+    int chatC    = m_db->eventCountBySource(EventSource::Chat,    start, end);
 
     qint64 totalMin = 0, totalCnt = 0;
     for (auto &s : stats) { totalMin += s.totalMinutes; totalCnt += s.count; }
@@ -246,6 +297,27 @@ void AnalyticsPage::refresh() {
     if (m_comparisonWidget) m_comparisonWidget->refresh();
     if (m_motivationWidget) m_motivationWidget->refresh(start, end);
 
+    // V4 § 5.2: empty state — use the 7-day window regardless of selected range
+    if (m_emptyState && m_scrollContent) {
+        QDateTime sevenStart(today.addDays(-6), QTime(0, 0));
+        QDateTime sevenEnd(today, QTime(23, 59, 59));
+        int recent = m_db->getEventsByRange(sevenStart, sevenEnd).size();
+        bool emptyish = (recent == 0);
+        if (emptyish) {
+            int totalAll = m_db->getAllEvents().size();
+            m_emptyState->setTitle(I18n::t("empty.analytics.title"));
+            m_emptyState->setSubtitle(I18n::t("empty.analytics.subtitle"));
+            m_emptyState->setProgress(I18n::t("empty.analytics.progress_fmt").arg(qMin(totalAll, 3)));
+            m_emptyState->clearActions();
+            m_emptyState->show();
+            m_emptyState->raise();
+            m_scrollContent->setVisible(false);
+        } else {
+            m_emptyState->hide();
+            m_scrollContent->setVisible(true);
+        }
+    }
+
     applyTheme();
 }
 
@@ -257,7 +329,7 @@ void AnalyticsPage::applyTheme() {
         QPushButton#RefreshBtn {
             background-color: %1;
             border: 1px solid %2;
-            border-radius: 9px;
+            border-radius: 8px;
             color: %3;
             font-weight: 500;
             padding: 0 14px;
@@ -266,12 +338,23 @@ void AnalyticsPage::applyTheme() {
             background-color: %4;
             color: %5;
         }
+        QLabel#AnalyticsSection[class="section"] {
+            color: %5;
+            border-left: 3px solid %6;
+            padding-left: 10px;
+            margin-top: 18px;
+            margin-bottom: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            background: transparent;
+        }
     )")
     .arg(t.bgContainer().name())
     .arg(t.strokeRgba())
     .arg(t.textSecondary().name())
     .arg(t.cardBgHoverRgba())
-    .arg(t.textPrimary().name()));
+    .arg(t.textPrimary().name())
+    .arg(t.brand().name()));
 
     QString cardStyle = QString(
         "QFrame#cardFrame{background:%1;border:1px solid %2;border-radius:%3px;}")
@@ -285,7 +368,7 @@ void AnalyticsPage::applyTheme() {
     m_title->setStyleSheet(QString("color:%1;background:transparent;").arg(t.textPrimary().name()));
 
     if (m_titleIcon) {
-        m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavAnalytics, t.brand(), 26));
+        m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavAnalytics, t.brand(), 24));
     }
     if (m_refreshBtn) {
         m_refreshBtn->setIcon(IconRenderer::icon(IconRenderer::Refresh, t.textSecondary(), 16));

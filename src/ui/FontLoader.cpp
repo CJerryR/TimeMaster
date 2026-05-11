@@ -134,6 +134,18 @@ QString FontLoader::primaryFamily() { return g_primary; }
 QString FontLoader::cjkFamily()     { return g_cjk; }
 QString FontLoader::monoFamily()    { return g_mono; }
 
+QString FontLoader::numericFamily() {
+    // 偏好 Inter / SF Pro / Segoe UI Variable — 它们的 OpenType tnum 表现最稳
+    auto families = QFontDatabase::families();
+    for (const char *want : {"Inter", "SF Pro Display", "SF Pro Text",
+                              "Segoe UI Variable", "Segoe UI"}) {
+        for (const auto &f : families) {
+            if (f.compare(QString::fromLatin1(want), Qt::CaseInsensitive) == 0) return f;
+        }
+    }
+    return g_primary;
+}
+
 QString FontLoader::familyChain() {
     QStringList chain;
     auto add = [&](const QString &f) {

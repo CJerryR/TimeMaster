@@ -18,8 +18,10 @@ public:
 
 private:
     Database *m_db;
-    QLabel *m_title;
-    QLabel *m_text;
+    QLabel *m_title = nullptr;
+    QLabel *m_text  = nullptr;
+    QDateTime m_lastStart;
+    QDateTime m_lastEnd;
 };
 
 } // namespace timemaster

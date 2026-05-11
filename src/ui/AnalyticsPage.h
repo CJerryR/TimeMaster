@@ -46,6 +46,12 @@ private:
     QComboBox *m_rangeCombo;
     QPushButton *m_refreshBtn = nullptr;
 
+    // V4 § 6.3: section headers
+    QLabel *m_secOverview  = nullptr;
+    QLabel *m_secStructure = nullptr;
+    QLabel *m_secInsights  = nullptr;
+    QList<QFrame*> m_sectionAccentBars;
+
     StatsCardsWidget *m_statsCards;
     CategoryPieChart *m_pieChart;
     HorizontalBarChart *m_barChart;
@@ -57,6 +63,19 @@ private:
     MotivationWidget *m_motivationWidget = nullptr;
 
     QScrollArea *m_scrollArea;
+
+    // V4 § 5.2: empty state shown when 7d events == 0
+    QWidget    *m_scrollContent = nullptr;
+    class EmptyState *m_emptyState = nullptr;
+    QWidget    *m_contentHost = nullptr;
+
+    // Subtitle labels (for language refresh)
+    QLabel *m_pieTitle = nullptr;
+    QLabel *m_barTitle = nullptr;
+    QLabel *m_trendTitle = nullptr;
+
+private slots:
+    void applyLanguage();
 };
 
 } // namespace timemaster

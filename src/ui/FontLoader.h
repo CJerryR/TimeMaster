@@ -23,6 +23,10 @@ public:
     static QString monoFamily();      // 等宽字体
     static QString familyChain();     // 完整 CSS family 串
 
+    // V4 § 3.3：用于 KPI / 日期等大数字（等宽 figure）
+    // 优先 Inter > SF Pro Display > 系统数字字体
+    static QString numericFamily();
+
     // 是否成功加载了内嵌/外部字体（用于设置提示）
     static bool customLoaded();
 };

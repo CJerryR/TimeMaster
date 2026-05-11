@@ -24,19 +24,26 @@ public:
 
 private slots:
     void applyTheme();
+    void applyLanguage();
 
 private:
     Database *m_db;
 
-    QLabel *m_title;
-    QLabel *m_pastCountVal;
-    QLabel *m_pastHoursVal;
-    QLabel *m_futCountVal;
-    QLabel *m_futHoursVal;
-    QLabel *m_deltaLabel;
+    QLabel *m_title = nullptr;
+    QLabel *m_pastHeader = nullptr;
+    QLabel *m_futHeader  = nullptr;
+    QLabel *m_pastCap1   = nullptr;
+    QLabel *m_pastCap2   = nullptr;
+    QLabel *m_futCap1    = nullptr;
+    QLabel *m_futCap2    = nullptr;
+    QLabel *m_pastCountVal = nullptr;
+    QLabel *m_pastHoursVal = nullptr;
+    QLabel *m_futCountVal  = nullptr;
+    QLabel *m_futHoursVal  = nullptr;
+    QLabel *m_deltaLabel   = nullptr;
 
-    QFrame *m_pastCard;
-    QFrame *m_futCard;
+    QFrame *m_pastCard = nullptr;
+    QFrame *m_futCard  = nullptr;
 };
 
 } // namespace timemaster

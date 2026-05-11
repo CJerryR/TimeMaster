@@ -12,11 +12,7 @@ namespace timemaster {
 class SidebarLogo;
 
 /**
- * 左侧导航栏
- *  - 顶部 Logo：自绘贴图（用当前选中的 App 图标）
- *  - 三个导航项：日历 / 分析 / 对话（QPainter 贴图图标，跟主题变色）
- *  - 底部：主题切换 + 设置（贴图按钮，确保不被裁切）
- *  - 半透明背景，让主窗口的渐变隐隐透出
+ * V4 sidebar: 180 px wide, slim ghost tool buttons, no English subtitle.
  */
 class Sidebar : public QWidget {
     Q_OBJECT
@@ -32,19 +28,24 @@ signals:
     void navigated(int index);
     void themeToggleRequested();
     void settingsRequested();
+    void languageToggleRequested();
 
 private slots:
     void applyTheme();
+    void applyLanguage();
     void onNavClicked(int idx);
 
 private:
-    QPushButton *makeNavButton(int iconId, const QString &label);
+    QPushButton *makeNavButton(int iconId, const QString &i18nKey);
     void refreshNavIcons();
 
     SidebarLogo *m_logoWidget = nullptr;
+    QLabel *m_brandText = nullptr;
     QVector<QPushButton*> m_navButtons;
+    QVector<QString>      m_navKeys;
     QPushButton *m_themeBtn = nullptr;
     QPushButton *m_settingsBtn = nullptr;
+    QPushButton *m_langBtn = nullptr;
     NavItem m_current = Calendar;
 };
 

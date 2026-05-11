@@ -2,6 +2,7 @@
 #include "Theme.h"
 #include "IconRenderer.h"
 #include "../core/Database.h"
+#include "../core/I18n.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -18,14 +19,15 @@ namespace timemaster {
 AiHistoryDialog::AiHistoryDialog(Database *db, QWidget *parent)
     : QDialog(parent), m_db(db)
 {
-    setWindowTitle("AI 导入历史");
     setModal(true);
     resize(880, 580);
     setMinimumSize(740, 480);
 
     buildUi();
+    applyLanguage();
     applyTheme();
-    connect(&Theme::instance(), &Theme::changed, this, &AiHistoryDialog::applyTheme);
+    connect(&Theme::instance(), &Theme::changed,        this, &AiHistoryDialog::applyTheme);
+    connect(&I18n::instance(),  &I18n::languageChanged, this, &AiHistoryDialog::applyLanguage);
     connect(m_db, &Database::aiBatchesChanged, this, &AiHistoryDialog::reloadBatches);
 
     reloadBatches();
@@ -36,7 +38,7 @@ void AiHistoryDialog::buildUi() {
     root->setContentsMargins(22, 20, 22, 18);
     root->setSpacing(14);
 
-    // ---- 标题区 ----
+    // ---- Title row ----
     auto *titleRow = new QHBoxLayout;
     titleRow->setSpacing(8);
 
@@ -46,39 +48,39 @@ void AiHistoryDialog::buildUi() {
     titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::History, Theme::instance().brand(), 22));
     titleRow->addWidget(titleIcon);
 
-    auto *title = new QLabel("AI 导入历史");
-    title->setObjectName("HistoryTitle");
-    titleRow->addWidget(title);
+    m_titleLabel = new QLabel;
+    m_titleLabel->setObjectName("HistoryTitle");
+    titleRow->addWidget(m_titleLabel);
 
-    auto *subtitle = new QLabel("撤销 AI 误识别的日程");
-    subtitle->setObjectName("HistorySubtitle");
-    titleRow->addWidget(subtitle);
+    m_subtitleLabel = new QLabel;
+    m_subtitleLabel->setObjectName("HistorySubtitle");
+    titleRow->addWidget(m_subtitleLabel);
     titleRow->addStretch();
 
     root->addLayout(titleRow);
 
-    // ---- 内容区：左右分栏 ----
+    // ---- Content: two-pane ----
     auto *contentRow = new QHBoxLayout;
     contentRow->setSpacing(14);
 
-    // 左侧批次列表
+    // Left batch list
     auto *leftPane = new QFrame;
     leftPane->setObjectName("HistoryPane");
     auto *leftLayout = new QVBoxLayout(leftPane);
     leftLayout->setContentsMargins(2, 2, 2, 2);
     leftLayout->setSpacing(0);
 
-    auto *leftHeader = new QLabel("导入批次");
-    leftHeader->setObjectName("PaneHeader");
-    leftHeader->setContentsMargins(14, 12, 14, 8);
-    leftLayout->addWidget(leftHeader);
+    m_leftHeader = new QLabel;
+    m_leftHeader->setObjectName("PaneHeader");
+    m_leftHeader->setContentsMargins(14, 12, 14, 8);
+    leftLayout->addWidget(m_leftHeader);
 
     m_batchList = new QListWidget;
     m_batchList->setObjectName("BatchList");
     m_batchList->setVerticalScrollMode(QListWidget::ScrollPerPixel);
     leftLayout->addWidget(m_batchList);
 
-    m_emptyHint = new QLabel("还没有 AI 导入记录\n\n通过日历页顶部的「AI 解析」\n导入日程后会显示在这里");
+    m_emptyHint = new QLabel;
     m_emptyHint->setObjectName("EmptyHint");
     m_emptyHint->setAlignment(Qt::AlignCenter);
     m_emptyHint->setWordWrap(true);
@@ -87,20 +89,20 @@ void AiHistoryDialog::buildUi() {
 
     contentRow->addWidget(leftPane, 4);
 
-    // 右侧详情
+    // Right detail
     auto *rightPane = new QFrame;
     rightPane->setObjectName("HistoryPane");
     auto *rightLayout = new QVBoxLayout(rightPane);
     rightLayout->setContentsMargins(14, 12, 14, 12);
     rightLayout->setSpacing(10);
 
-    m_rightHeader = new QLabel("选择左侧的批次查看详情");
+    m_rightHeader = new QLabel;
     m_rightHeader->setObjectName("PaneHeader");
     rightLayout->addWidget(m_rightHeader);
 
-    auto *srcLabel = new QLabel("原始输入");
-    srcLabel->setProperty("class", "caption");
-    rightLayout->addWidget(srcLabel);
+    m_srcCaption = new QLabel;
+    m_srcCaption->setProperty("class", "caption");
+    rightLayout->addWidget(m_srcCaption);
 
     m_sourceTextView = new QTextBrowser;
     m_sourceTextView->setObjectName("SourceTextView");
@@ -108,20 +110,19 @@ void AiHistoryDialog::buildUi() {
     m_sourceTextView->setReadOnly(true);
     rightLayout->addWidget(m_sourceTextView);
 
-    auto *evLabel = new QLabel("批次内事件");
-    evLabel->setProperty("class", "caption");
-    rightLayout->addWidget(evLabel);
+    m_evCaption = new QLabel;
+    m_evCaption->setProperty("class", "caption");
+    rightLayout->addWidget(m_evCaption);
 
     m_eventList = new QListWidget;
     m_eventList->setObjectName("EventList");
     m_eventList->setVerticalScrollMode(QListWidget::ScrollPerPixel);
     rightLayout->addWidget(m_eventList, 1);
 
-    // 右侧底部按钮区
     auto *btnRow = new QHBoxLayout;
     btnRow->setSpacing(8);
 
-    m_deleteEventBtn = new QPushButton("删除选中事件");
+    m_deleteEventBtn = new QPushButton;
     m_deleteEventBtn->setObjectName("DangerGhostBtn");
     m_deleteEventBtn->setCursor(Qt::PointingHandCursor);
     m_deleteEventBtn->setEnabled(false);
@@ -129,17 +130,15 @@ void AiHistoryDialog::buildUi() {
 
     btnRow->addStretch();
 
-    m_archiveBtn = new QPushButton("仅清理历史记录");
+    m_archiveBtn = new QPushButton;
     m_archiveBtn->setObjectName("SecondaryBtn");
     m_archiveBtn->setCursor(Qt::PointingHandCursor);
-    m_archiveBtn->setToolTip("保留日历事件，只清掉这条导入记录");
     m_archiveBtn->setEnabled(false);
     btnRow->addWidget(m_archiveBtn);
 
-    m_undoBtn = new QPushButton("↶ 撤销整批");
+    m_undoBtn = new QPushButton;
     m_undoBtn->setObjectName("DangerBtn");
     m_undoBtn->setCursor(Qt::PointingHandCursor);
-    m_undoBtn->setToolTip("删除该批次的所有事件");
     m_undoBtn->setEnabled(false);
     btnRow->addWidget(m_undoBtn);
 
@@ -149,27 +148,52 @@ void AiHistoryDialog::buildUi() {
 
     root->addLayout(contentRow, 1);
 
-    // ---- 底部关闭 ----
     auto *footer = new QHBoxLayout;
     footer->addStretch();
-    auto *closeBtn = new QPushButton("关闭");
-    closeBtn->setObjectName("CloseBtn");
-    closeBtn->setMinimumWidth(90);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
-    footer->addWidget(closeBtn);
+    m_closeBtn = new QPushButton;
+    m_closeBtn->setObjectName("CloseBtn");
+    m_closeBtn->setMinimumWidth(90);
+    m_closeBtn->setCursor(Qt::PointingHandCursor);
+    connect(m_closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+    footer->addWidget(m_closeBtn);
     root->addLayout(footer);
 
-    // 信号
     connect(m_batchList, &QListWidget::itemSelectionChanged,
             this, &AiHistoryDialog::onBatchSelected);
     connect(m_eventList, &QListWidget::itemSelectionChanged,
             this, [this]{
                 m_deleteEventBtn->setEnabled(m_eventList->currentItem() != nullptr);
             });
-    connect(m_undoBtn, &QPushButton::clicked, this, &AiHistoryDialog::onUndoBatch);
-    connect(m_archiveBtn, &QPushButton::clicked, this, &AiHistoryDialog::onArchiveBatch);
+    connect(m_undoBtn,   &QPushButton::clicked, this, &AiHistoryDialog::onUndoBatch);
+    connect(m_archiveBtn,&QPushButton::clicked, this, &AiHistoryDialog::onArchiveBatch);
     connect(m_deleteEventBtn, &QPushButton::clicked, this, &AiHistoryDialog::onDeleteEvent);
+}
+
+void AiHistoryDialog::applyLanguage() {
+    setWindowTitle(I18n::t("history.title"));
+    if (m_titleLabel)    m_titleLabel->setText(I18n::t("history.title"));
+    if (m_subtitleLabel) m_subtitleLabel->setText(I18n::t("history.subtitle"));
+    if (m_leftHeader)    m_leftHeader->setText(I18n::t("history.pane.batches"));
+    if (m_emptyHint)     m_emptyHint->setText(I18n::t("history.empty"));
+    if (m_srcCaption)    m_srcCaption->setText(I18n::t("history.source_input"));
+    if (m_evCaption)     m_evCaption->setText(I18n::t("history.batch_events"));
+    if (m_deleteEventBtn)m_deleteEventBtn->setText(I18n::t("history.delete_event"));
+    if (m_archiveBtn) {
+        m_archiveBtn->setText(I18n::t("history.archive_only"));
+        m_archiveBtn->setToolTip(I18n::t("history.archive_tip"));
+    }
+    if (m_undoBtn) {
+        m_undoBtn->setText(I18n::t("history.undo_batch"));
+        m_undoBtn->setToolTip(I18n::t("history.undo_tip"));
+    }
+    if (m_closeBtn)  m_closeBtn->setText(I18n::t("common.close"));
+
+    // Refresh right pane and list previews (which embed Chinese badge "· N 条")
+    if (currentBatchId().isEmpty() && m_batchList && m_batchList->count() == 0) {
+        if (m_rightHeader) m_rightHeader->setText(I18n::t("history.select_hint"));
+    } else if (!m_batches.isEmpty()) {
+        reloadBatches();
+    }
 }
 
 void AiHistoryDialog::applyTheme() {
@@ -222,14 +246,14 @@ void AiHistoryDialog::applyTheme() {
             outline: 0;
         }
         QListWidget#BatchList::item {
-            border-radius: 9px;
+            border-radius: 8px;
             margin: 2px 6px;
             padding: 10px 12px;
             color: %1;
         }
         QListWidget#BatchList::item:hover { background-color: %6; }
         QListWidget#BatchList::item:selected {
-            background-color: rgba(217,119,87,0.14);
+            background-color: rgba(194,102,70,0.14);
             color: %7;
         }
         QListWidget#EventList::item {
@@ -240,13 +264,13 @@ void AiHistoryDialog::applyTheme() {
         }
         QListWidget#EventList::item:hover { background-color: %6; }
         QListWidget#EventList::item:selected {
-            background-color: rgba(217,119,87,0.11);
+            background-color: rgba(194,102,70,0.11);
         }
 
         QTextBrowser#SourceTextView {
             background-color: %2;
             border: 1px solid %4;
-            border-radius: 9px;
+            border-radius: 8px;
             padding: 8px 10px;
             color: %1;
             font-size: 13px;
@@ -256,7 +280,7 @@ void AiHistoryDialog::applyTheme() {
             background-color: %8;
             color: white;
             border: none;
-            border-radius: 9px;
+            border-radius: 8px;
             padding: 8px 18px;
             font-weight: 600;
         }
@@ -269,7 +293,7 @@ void AiHistoryDialog::applyTheme() {
             background-color: transparent;
             color: %8;
             border: 1px solid %4;
-            border-radius: 9px;
+            border-radius: 8px;
             padding: 8px 14px;
         }
         QPushButton#DangerGhostBtn:hover {
@@ -284,7 +308,7 @@ void AiHistoryDialog::applyTheme() {
             background-color: transparent;
             color: %3;
             border: 1px solid %4;
-            border-radius: 9px;
+            border-radius: 8px;
             padding: 8px 14px;
         }
         QPushButton#SecondaryBtn:hover {
@@ -299,7 +323,7 @@ void AiHistoryDialog::applyTheme() {
             background-color: %2;
             color: %1;
             border: 1px solid %4;
-            border-radius: 9px;
+            border-radius: 8px;
             padding: 8px 18px;
         }
         QPushButton#CloseBtn:hover { background-color: %6; }
@@ -324,7 +348,7 @@ void AiHistoryDialog::reloadBatches() {
     if (m_batches.isEmpty()) {
         m_emptyHint->show();
         m_batchList->hide();
-        m_rightHeader->setText("选择左侧的批次查看详情");
+        m_rightHeader->setText(I18n::t("history.select_hint"));
         m_sourceTextView->clear();
         m_eventList->clear();
         m_currentBatchEvents.clear();
@@ -345,7 +369,7 @@ void AiHistoryDialog::reloadBatches() {
         QString preview = b.sourceText;
         preview.replace('\n', ' ');
         if (preview.length() > 40) preview = preview.left(37) + "…";
-        QString badge = QString("· %1 条").arg(b.aliveCount);
+        QString badge = I18n::t("history.batch_count_fmt").arg(b.aliveCount);
         QString text = QString("%1\n%2  %3").arg(relTime, preview, badge);
         item->setText(text);
         item->setData(Qt::UserRole, b.id);
@@ -362,7 +386,7 @@ void AiHistoryDialog::reloadBatches() {
 }
 
 QString AiHistoryDialog::currentBatchId() const {
-    auto *it = m_batchList->currentItem();
+    auto *it = m_batchList ? m_batchList->currentItem() : nullptr;
     return it ? it->data(Qt::UserRole).toString() : QString();
 }
 
@@ -373,16 +397,18 @@ void AiHistoryDialog::onBatchSelected() {
     AiBatchInfo current;
     for (const auto &b : m_batches) if (b.id == id) { current = b; break; }
 
-    m_rightHeader->setText(QString("批次详情  ·  %1").arg(current.createdAt.toString("yyyy-MM-dd HH:mm")));
+    m_rightHeader->setText(I18n::t("history.batch_detail_fmt")
+                              .arg(current.createdAt.toString("yyyy-MM-dd HH:mm")));
     m_sourceTextView->setPlainText(current.sourceText);
 
     m_currentBatchEvents = m_db->getBatchEvents(id);
     m_eventList->clear();
     auto pal = Theme::instance().palette();
+    QString allDay = I18n::t("history.all_day");
     for (const auto &e : m_currentBatchEvents) {
         auto *item = new QListWidgetItem();
         QString time = e.allDay
-            ? "全天"
+            ? allDay
             : (e.startDate.toString("MM-dd HH:mm")
                + " — " + e.endDate.toString("HH:mm"));
         item->setText(QString("  %1\n  %2 · %3")
@@ -405,21 +431,20 @@ void AiHistoryDialog::onUndoBatch() {
     if (id.isEmpty()) return;
 
     int n = m_currentBatchEvents.size();
-    auto ret = QMessageBox::question(this, "确认撤销",
-        QString("将从日历中删除这一批 %1 个事件，且不可恢复。是否继续？").arg(n),
+    auto ret = QMessageBox::question(this, I18n::t("history.confirm_undo_title"),
+        I18n::t("history.confirm_undo_fmt").arg(n),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (ret != QMessageBox::Yes) return;
 
     m_db->deleteBatch(id);
-    // reloadBatches() 会被 aiBatchesChanged 触发
 }
 
 void AiHistoryDialog::onArchiveBatch() {
     QString id = currentBatchId();
     if (id.isEmpty()) return;
 
-    auto ret = QMessageBox::question(this, "清理历史记录",
-        "保留这些日历事件，仅清掉这条 AI 导入记录。是否继续？",
+    auto ret = QMessageBox::question(this, I18n::t("history.confirm_archive_title"),
+        I18n::t("history.confirm_archive_msg"),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (ret != QMessageBox::Yes) return;
 
@@ -432,13 +457,12 @@ void AiHistoryDialog::onDeleteEvent() {
     QString eid = it->data(Qt::UserRole).toString();
     if (eid.isEmpty()) return;
 
-    auto ret = QMessageBox::question(this, "确认删除",
-        "从日历中删除这条事件？",
+    auto ret = QMessageBox::question(this, I18n::t("history.confirm_delete_title"),
+        I18n::t("history.confirm_delete_msg"),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (ret != QMessageBox::Yes) return;
 
     m_db->deleteEvent(eid);
-    // 刷新当前批次详情
     onBatchSelected();
 }
 

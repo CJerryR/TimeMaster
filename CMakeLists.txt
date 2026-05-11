@@ -33,6 +33,8 @@ set(APP_SOURCES
     src/core/Database.cpp
     src/core/DeepSeekClient.h
     src/core/DeepSeekClient.cpp
+    src/core/I18n.h
+    src/core/I18n.cpp
 
     # Utils
     src/utils/MarkdownToHtml.h
@@ -65,6 +67,8 @@ set(APP_SOURCES
     src/ui/EventDialog.cpp
     src/ui/SettingsDialog.h
     src/ui/SettingsDialog.cpp
+    src/ui/OnboardingDialog.h
+    src/ui/OnboardingDialog.cpp
     src/ui/AiHistoryDialog.h
     src/ui/AiHistoryDialog.cpp
     src/ui/AiResultsDialog.h
@@ -89,6 +93,9 @@ set(APP_SOURCES
     src/ui/widgets/ComparisonWidget.cpp
     src/ui/widgets/MotivationWidget.h
     src/ui/widgets/MotivationWidget.cpp
+    src/ui/widgets/EmptyState.h
+    src/ui/widgets/EmptyState.cpp
+    src/ui/widgets/ShadowEffect.h
 )
 
 # ---- 可选资源（字体 + 图标 SVG） ----

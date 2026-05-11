@@ -1,26 +1,38 @@
 #include "StatsCardsWidget.h"
+#include "ShadowEffect.h"
 #include "../Theme.h"
+#include "../FontLoader.h"
+#include "../../core/I18n.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QFont>
+#include <QLocale>
 
 namespace timemaster {
 
+// V4 § 6.5: cards 12px
 static constexpr int CARD_RADIUS = 12;
 
 StatsCardsWidget::StatsCardsWidget(QWidget *parent) : QWidget(parent) {
     auto *root = new QHBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
-    root->setSpacing(16);
+    root->setSpacing(14);
 
-    setupCard(m_totalCard, "总时长", root);
-    setupCard(m_countCard, "事件数", root);
-    setupCard(m_avgCard,   "日均",   root);
-    setupCard(m_peakCard,  "最忙日", root);
+    setupCard(m_totalCard, I18n::t("kpi.total"),    root);
+    setupCard(m_countCard, I18n::t("kpi.events"),   root);
+    setupCard(m_avgCard,   I18n::t("kpi.daily_avg"),root);
+    setupCard(m_peakCard,  I18n::t("kpi.peak_day"), root);
 
-    // 主题变化时重新刷色
     connect(&Theme::instance(), &Theme::changed, this, &StatsCardsWidget::applyTheme);
+    connect(&I18n::instance(),  &I18n::languageChanged, this, [this]{
+        // Re-set captions on language change
+        m_totalCard.caption->setText(I18n::t("kpi.total"));
+        m_countCard.caption->setText(I18n::t("kpi.events"));
+        m_avgCard.caption->setText(I18n::t("kpi.daily_avg"));
+        m_peakCard.caption->setText(I18n::t("kpi.peak_day"));
+        applyTheme();
+    });
     applyTheme();
 }
 
@@ -37,9 +49,17 @@ void StatsCardsWidget::setupCard(Card &card, const QString &caption, QBoxLayout 
     lay->addWidget(card.caption);
 
     card.value = new QLabel("—");
+    // V4 § 3.1: KPI numbers ~32px / 600 with Inter + tabular figures
     QFont nf;
-    nf.setPointSize(22);
-    nf.setWeight(QFont::Bold);
+    QString numFam = FontLoader::numericFamily();
+    if (!numFam.isEmpty()) nf.setFamily(numFam);
+    nf.setPointSize(24);          // ~32px @ 96dpi
+    nf.setWeight(QFont::DemiBold); // 600
+    nf.setStyleStrategy(QFont::PreferAntialias);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    // Tabular numerals so digits align across rows
+    nf.setFeature("tnum", 1);
+#endif
     card.value->setFont(nf);
     lay->addWidget(card.value);
 
@@ -57,12 +77,13 @@ void StatsCardsWidget::applyCardStyle(Card &card) {
                           t.strokeRgba())
                      .arg(CARD_RADIUS);
     card.frame->setStyleSheet(st);
-    // 关键修复（item 12）：数字颜色用 textPrimary，跟随主题变成浅色
-    card.value->setStyleSheet(QString("color:%1;background:transparent;")
+    card.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
                                   .arg(t.textPrimary().name()));
-    card.caption->setStyleSheet(QString("color:%1;background:transparent;")
+    card.caption->setStyleSheet(QString("color:%1;background:transparent;font-size:13px;")
                                     .arg(t.textSecondary().name()));
     card.frame->setMinimumWidth(130);
+    // V4 § 7.2 — soft drop shadow
+    ShadowEffect::apply(card.frame, ShadowEffect::Card, t.mode() == Theme::Dark);
 }
 
 void StatsCardsWidget::applyTheme() {
@@ -70,7 +91,6 @@ void StatsCardsWidget::applyTheme() {
     applyCardStyle(m_countCard);
     applyCardStyle(m_avgCard);
     applyCardStyle(m_peakCard);
-    // 重新设置内容以触发依赖主题的颜色（如最忙日的 brand 色、日均的状态色）
     setTotal(m_lastTotal);
     setCount(m_lastCount);
     setDailyAvg(m_lastAvg);
@@ -89,32 +109,32 @@ QString StatsCardsWidget::formatMinutes(qint64 min) const {
 void StatsCardsWidget::setTotal(qint64 minutes) {
     m_lastTotal = minutes;
     m_totalCard.value->setText(formatMinutes(minutes));
-    m_totalCard.value->setStyleSheet(QString("color:%1;background:transparent;")
+    m_totalCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
                                           .arg(Theme::instance().textPrimary().name()));
 }
 
 void StatsCardsWidget::setCount(int count) {
     m_lastCount = count;
     m_countCard.value->setText(QString::number(count));
-    m_countCard.value->setStyleSheet(QString("color:%1;background:transparent;")
+    m_countCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
                                           .arg(Theme::instance().textPrimary().name()));
 }
 
 void StatsCardsWidget::setDailyAvg(qint64 minutes) {
     m_lastAvg = minutes;
     m_avgCard.value->setText(formatMinutes(minutes));
-    m_avgCard.value->setStyleSheet(QString("color:%1;background:transparent;")
+    m_avgCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
                                         .arg(Theme::instance().textPrimary().name()));
     auto &t = Theme::instance();
     if (minutes < 60) {
-        m_avgCard.sub->setText("记录较少");
-        m_avgCard.sub->setStyleSheet(QString("color:%1;").arg(t.textPlaceholder().name()));
+        m_avgCard.sub->setText(I18n::t("kpi.avg.low"));
+        m_avgCard.sub->setStyleSheet(QString("color:%1;font-size:13px;").arg(t.textPlaceholder().name()));
     } else if (minutes > 480) {
-        m_avgCard.sub->setText("高强度");
-        m_avgCard.sub->setStyleSheet(QString("color:%1;").arg(t.danger().name()));
+        m_avgCard.sub->setText(I18n::t("kpi.avg.high"));
+        m_avgCard.sub->setStyleSheet(QString("color:%1;font-size:13px;").arg(t.danger().name()));
     } else {
-        m_avgCard.sub->setText("适中");
-        m_avgCard.sub->setStyleSheet(QString("color:%1;").arg(t.success().name()));
+        m_avgCard.sub->setText(I18n::t("kpi.avg.normal"));
+        m_avgCard.sub->setStyleSheet(QString("color:%1;font-size:13px;").arg(t.success().name()));
     }
 }
 
@@ -122,20 +142,30 @@ void StatsCardsWidget::setPeakDay(const QDate &date) {
     m_lastPeak = date;
     if (!date.isValid()) {
         m_peakCard.value->setText("—");
-        m_peakCard.value->setStyleSheet(QString("color:%1;background:transparent;")
+        m_peakCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
                                               .arg(Theme::instance().textPrimary().name()));
         m_peakCard.sub->setText("");
         return;
     }
     auto &t = Theme::instance();
     m_peakCard.value->setText(QString("%1/%2").arg(date.month()).arg(date.day()));
-    // 最忙日用 brand 色（橙）—— 两种主题下都对比鲜明
-    m_peakCard.value->setStyleSheet(QString("color:%1;background:transparent;font-weight:bold;")
+    m_peakCard.value->setStyleSheet(QString("color:%1;background:transparent;font-weight:600;letter-spacing:-0.5px;")
                                         .arg(t.brand().name()));
-    int dow = date.dayOfWeek() % 7;
-    QStringList weekdays = {"日", "一", "二", "三", "四", "五", "六"};
-    m_peakCard.sub->setText("周" + weekdays[dow]);
-    m_peakCard.sub->setStyleSheet(QString("color:%1;").arg(t.textSecondary().name()));
+
+    QString sub;
+    if (I18n::instance().isEnglish()) {
+        // English short weekday: Mon..Sun
+        static const QStringList en = {"Mon","Tue","Wed","Thu","Fri","Sat","Sun"};
+        int dow = date.dayOfWeek();   // 1..7
+        sub = en.value((dow - 1 + 7) % 7);
+    } else {
+        // 中文 周一..周日
+        static const QStringList zh = {"一","二","三","四","五","六","日"};
+        int dow = date.dayOfWeek();
+        sub = QStringLiteral("周") + zh.value((dow - 1 + 7) % 7);
+    }
+    m_peakCard.sub->setText(sub);
+    m_peakCard.sub->setStyleSheet(QString("color:%1;font-size:13px;").arg(t.textSecondary().name()));
 }
 
 } // namespace timemaster

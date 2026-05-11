@@ -2,6 +2,7 @@
 #include "EventDialog.h"
 #include "Theme.h"
 #include "IconRenderer.h"
+#include "../core/I18n.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -41,23 +42,23 @@ public:
 
         editBtn = new QPushButton;
         editBtn->setObjectName("AiRowIconBtn");
-        editBtn->setToolTip("修改");
+        editBtn->setToolTip(I18n::t("ai.results.edit_tip"));
         editBtn->setCursor(Qt::PointingHandCursor);
         editBtn->setFixedSize(32, 32);
         lay->addWidget(editBtn);
 
         delBtn = new QPushButton;
         delBtn->setObjectName("AiRowIconBtnDanger");
-        delBtn->setToolTip("从此次导入中删除");
+        delBtn->setToolTip(I18n::t("ai.results.remove_tip"));
         delBtn->setCursor(Qt::PointingHandCursor);
         delBtn->setFixedSize(32, 32);
         lay->addWidget(delBtn);
     }
 
     void setSuggestion(const ScheduleSuggestion &s) {
-        titleLab->setText(s.title.isEmpty() ? "（无标题）" : s.title);
+        titleLab->setText(s.title.isEmpty() ? I18n::t("ai.results.untitled") : s.title);
         QString time = s.allDay
-            ? "全天"
+            ? I18n::t("history.all_day")
             : (s.startDate.toString("MM-dd ddd HH:mm") + " — " + s.endDate.toString("HH:mm"));
         QString meta = time + "  ·  " + categoryLabel(s.category)
                      + "  ·  " + priorityLabel(s.priority);
@@ -119,7 +120,7 @@ public:
 AiResultsDialog::AiResultsDialog(QList<ScheduleSuggestion> items, QWidget *parent)
     : QDialog(parent), m_items(std::move(items))
 {
-    setWindowTitle("AI 识别结果");
+    setWindowTitle(I18n::t("ai.results.title"));
     setModal(true);
     setMinimumSize(640, 600);
     resize(680, 640);
@@ -143,19 +144,19 @@ void AiResultsDialog::buildUi() {
     headerIcon->setFixedSize(20, 20);
     headerIcon->setPixmap(IconRenderer::pixmap(IconRenderer::Sparkle, Theme::instance().brand(), 20));
     headerRow->addWidget(headerIcon);
-    auto *header = new QLabel(QString("识别到 %1 条日程").arg(m_items.size()));
+    auto *header = new QLabel(I18n::t("ai.results.found_fmt").arg(m_items.size()));
     header->setProperty("class", "title");
     headerRow->addWidget(header);
     headerRow->addStretch();
     root->addLayout(headerRow);
 
-    m_summaryLabel = new QLabel("勾选要导入的条目；可点击编辑按钮修改任意一条的详情。");
+    m_summaryLabel = new QLabel(I18n::t("ai.results.subtitle"));
     m_summaryLabel->setProperty("class", "caption");
     m_summaryLabel->setWordWrap(true);
     root->addWidget(m_summaryLabel);
 
     auto *toolRow = new QHBoxLayout;
-    m_toggleAllBtn = new QPushButton("全部取消勾选");
+    m_toggleAllBtn = new QPushButton(I18n::t("ai.results.deselect_all"));
     m_toggleAllBtn->setObjectName("ToggleAllBtn");
     m_toggleAllBtn->setCursor(Qt::PointingHandCursor);
     connect(m_toggleAllBtn, &QPushButton::clicked, this, &AiResultsDialog::onToggleAll);
@@ -178,8 +179,9 @@ void AiResultsDialog::buildUi() {
     root->addWidget(m_scroll, 1);
 
     auto *bb = new QDialogButtonBox(QDialogButtonBox::Cancel | QDialogButtonBox::Save);
-    bb->button(QDialogButtonBox::Save)->setText("✓ 导入勾选项");
+    bb->button(QDialogButtonBox::Save)->setText(I18n::t("ai.results.confirm"));
     bb->button(QDialogButtonBox::Save)->setProperty("class", "primary");
+    bb->button(QDialogButtonBox::Cancel)->setText(I18n::t("ai.results.cancel"));
     connect(bb, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(bb, &QDialogButtonBox::accepted, this, &QDialog::accept);
     root->addWidget(bb);
@@ -225,9 +227,9 @@ void AiResultsDialog::rebuildRows() {
 
     if (m_summaryLabel) {
         if (m_items.isEmpty()) {
-            m_summaryLabel->setText("所有条目已被删除，关闭窗口即可取消本次导入。");
+            m_summaryLabel->setText(I18n::t("ai.results.all_removed"));
         } else {
-            m_summaryLabel->setText("勾选要导入的条目；可点击编辑按钮修改任意一条的详情。");
+            m_summaryLabel->setText(I18n::t("ai.results.subtitle"));
         }
     }
 }
@@ -295,7 +297,8 @@ void AiResultsDialog::onToggleAll() {
             m_rowWidgets[i]->check->setChecked(target);
         }
     }
-    m_toggleAllBtn->setText(target ? "全部取消勾选" : "全部勾选");
+    m_toggleAllBtn->setText(target ? I18n::t("ai.results.deselect_all")
+                                    : I18n::t("ai.results.select_all"));
 }
 
 QList<ScheduleSuggestion> AiResultsDialog::selectedSuggestions() const {

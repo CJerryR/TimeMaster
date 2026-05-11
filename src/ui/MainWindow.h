@@ -29,6 +29,7 @@ private slots:
     void applyTheme();
     void onThemeToggle();
     void onSettings();
+    void showOnboardingIfFirstRun();
 
 private:
     Database *m_db;

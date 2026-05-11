@@ -1,5 +1,6 @@
 #include "RhythmCardWidget.h"
 #include "../Theme.h"
+#include "../../core/I18n.h"
 
 #include <QPainter>
 #include <QPainterPath>
@@ -16,9 +17,13 @@ RhythmCardWidget::RhythmCardWidget(QWidget *parent) : QWidget(parent) {
     lay->setContentsMargins(0, 0, 0, 0);
     lay->setSpacing(4);
 
-    m_title = new QLabel("每日节奏");
+    m_title = new QLabel(I18n::t("widget.rhythm"));
     m_title->setProperty("class", "subtitle");
     lay->addWidget(m_title);
+    connect(&I18n::instance(), &I18n::languageChanged, this, [this]{
+        if (m_title) m_title->setText(I18n::t("widget.rhythm"));
+        update();
+    });
 }
 
 void RhythmCardWidget::setHourlyData(const QList<HourlyBucket> &buckets) {
@@ -40,7 +45,7 @@ void RhythmCardWidget::paintEvent(QPaintEvent *) {
         if (b.totalMinutes > maxMin) maxMin = b.totalMinutes;
     if (maxMin <= 0) {
         p.setPen(theme.textPlaceholder());
-        p.drawText(chartR, Qt::AlignCenter, "暂无数据");
+        p.drawText(chartR, Qt::AlignCenter, timemaster::I18n::t("widget.no_data"));
         return;
     }
 

@@ -1,5 +1,6 @@
 #include "CategoryPieChart.h"
 #include "Theme.h"
+#include "../core/I18n.h"
 #include "../core/Types.h"
 
 #include <QPainter>
@@ -32,7 +33,7 @@ void CategoryPieChart::paintEvent(QPaintEvent *) {
         for (const auto &s : m_stats) total += s.totalMinutes;
         if (total <= 0) {
             p.setPen(theme.textPlaceholder());
-            p.drawText(rect(), Qt::AlignCenter, "暂无数据");
+            p.drawText(rect(), Qt::AlignCenter, timemaster::I18n::t("widget.no_data"));
             return;
         }
         if (m_stats.size() == 1) {
@@ -46,7 +47,7 @@ void CategoryPieChart::paintEvent(QPaintEvent *) {
         for (const auto &s : m_stats) total += s.totalMinutes;
         if (total <= 0) {
             p.setPen(theme.textPlaceholder());
-            p.drawText(rect(), Qt::AlignCenter, "暂无数据");
+            p.drawText(rect(), Qt::AlignCenter, timemaster::I18n::t("widget.no_data"));
             return;
         }
         int startAngle = 90 * 16;

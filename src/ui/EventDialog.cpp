@@ -1,6 +1,7 @@
 #include "EventDialog.h"
 #include "Theme.h"
 #include "../core/Database.h"
+#include "../core/I18n.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -20,7 +21,7 @@
 namespace timemaster {
 
 EventDialog::EventDialog(QWidget *parent) : QDialog(parent) {
-    setWindowTitle("事件");
+    setWindowTitle(I18n::t("event.title"));
     setModal(true);
     setMinimumSize(560, 660);
     buildUi();
@@ -33,18 +34,18 @@ void EventDialog::buildUi() {
     root->setContentsMargins(28, 24, 28, 20);
     root->setSpacing(18);
 
-    auto *titleLabel = new QLabel("事件详情");
+    auto *titleLabel = new QLabel(I18n::t("event.title"));
     titleLabel->setProperty("class", "title");
     root->addWidget(titleLabel);
 
     // 标题
     {
         auto *box = new QVBoxLayout();
-        auto *l = new QLabel("标题");
+        auto *l = new QLabel(I18n::t("event.field.title"));
         l->setProperty("class", "caption");
         box->addWidget(l);
         m_titleEdit = new QLineEdit();
-        m_titleEdit->setPlaceholderText("如：项目评审会");
+        m_titleEdit->setPlaceholderText(I18n::t("event.title_ph"));
         m_titleEdit->setMinimumHeight(36);
         box->addWidget(m_titleEdit);
         root->addLayout(box);
@@ -55,9 +56,9 @@ void EventDialog::buildUi() {
         auto *grid = new QGridLayout();
         grid->setHorizontalSpacing(12);
         grid->setVerticalSpacing(8);
-        auto *lStart = new QLabel("开始");
+        auto *lStart = new QLabel(I18n::t("event.start"));
         lStart->setProperty("class", "caption");
-        auto *lEnd = new QLabel("结束");
+        auto *lEnd = new QLabel(I18n::t("event.end"));
         lEnd->setProperty("class", "caption");
         grid->addWidget(lStart, 0, 0);
         grid->addWidget(lEnd, 0, 1);
@@ -76,7 +77,7 @@ void EventDialog::buildUi() {
         connect(m_startEdit, &QDateTimeEdit::dateTimeChanged,
                 this, &EventDialog::syncEndDateMin);
 
-        m_allDayCheck = new QCheckBox("全天事件");
+        m_allDayCheck = new QCheckBox(I18n::t("event.all_day"));
         grid->addWidget(m_allDayCheck, 2, 0, 1, 2);
         connect(m_allDayCheck, &QCheckBox::toggled, this, &EventDialog::onAllDayToggled);
 
@@ -85,7 +86,7 @@ void EventDialog::buildUi() {
 
     // 类别
     {
-        auto *l = new QLabel("类别");
+        auto *l = new QLabel(I18n::t("event.category"));
         l->setProperty("class", "caption");
         root->addWidget(l);
 
@@ -107,7 +108,7 @@ void EventDialog::buildUi() {
 
     // 优先级
     {
-        auto *l = new QLabel("优先级");
+        auto *l = new QLabel(I18n::t("event.priority"));
         l->setProperty("class", "caption");
         root->addWidget(l);
 
@@ -130,7 +131,7 @@ void EventDialog::buildUi() {
 
     // 颜色
     {
-        auto *l = new QLabel("颜色");
+        auto *l = new QLabel(I18n::t("event.color"));
         l->setProperty("class", "caption");
         root->addWidget(l);
 
@@ -156,15 +157,15 @@ void EventDialog::buildUi() {
         grid->setHorizontalSpacing(12);
         grid->setVerticalSpacing(8);
 
-        auto *lLoc = new QLabel("地点（可选）");
+        auto *lLoc = new QLabel(I18n::t("event.location"));
         lLoc->setProperty("class", "caption");
         m_locationEdit = new QLineEdit();
-        m_locationEdit->setPlaceholderText("如：会议室 A");
+        m_locationEdit->setPlaceholderText(I18n::t("event.location_ph"));
         m_locationEdit->setMinimumHeight(36);
         grid->addWidget(lLoc, 0, 0);
         grid->addWidget(m_locationEdit, 1, 0);
 
-        auto *lRem = new QLabel("提前提醒（分钟）");
+        auto *lRem = new QLabel(I18n::t("event.reminder"));
         lRem->setProperty("class", "caption");
         m_reminderSpin = new QSpinBox();
         m_reminderSpin->setRange(0, 1440);
@@ -179,11 +180,11 @@ void EventDialog::buildUi() {
 
     // 备注
     {
-        auto *l = new QLabel("备注（可选）");
+        auto *l = new QLabel(I18n::t("event.notes"));
         l->setProperty("class", "caption");
         root->addWidget(l);
         m_descriptionEdit = new QPlainTextEdit();
-        m_descriptionEdit->setPlaceholderText("补充说明…");
+        m_descriptionEdit->setPlaceholderText(I18n::t("event.notes_ph"));
         m_descriptionEdit->setMaximumHeight(80);
         root->addWidget(m_descriptionEdit);
     }
@@ -192,7 +193,7 @@ void EventDialog::buildUi() {
 
     {
         auto *row = new QHBoxLayout();
-        m_deleteButton = new QPushButton("删除");
+        m_deleteButton = new QPushButton(I18n::t("event.delete"));
         m_deleteButton->setProperty("class", "ghost");
         m_deleteButton->setMinimumHeight(36);
         m_deleteButton->setVisible(false);
@@ -200,12 +201,12 @@ void EventDialog::buildUi() {
         row->addWidget(m_deleteButton);
         row->addStretch();
 
-        m_cancelButton = new QPushButton("取消");
+        m_cancelButton = new QPushButton(I18n::t("event.cancel"));
         m_cancelButton->setMinimumSize(86, 36);
         connect(m_cancelButton, &QPushButton::clicked, this, &QDialog::reject);
         row->addWidget(m_cancelButton);
 
-        m_submitButton = new QPushButton("保存");
+        m_submitButton = new QPushButton(I18n::t("event.save"));
         m_submitButton->setProperty("class", "primary");
         m_submitButton->setMinimumSize(86, 36);
         m_submitButton->setDefault(true);
@@ -397,20 +398,20 @@ void EventDialog::syncEndDateMin() {
 
 void EventDialog::onSubmit() {
     if (m_titleEdit->text().trimmed().isEmpty()) {
-        QMessageBox::information(this, "提示", "请填写事件标题");
+        QMessageBox::information(this, I18n::t("common.info"), I18n::t("event.title_required"));
         m_titleEdit->setFocus();
         return;
     }
     if (m_endEdit->dateTime() <= m_startEdit->dateTime()) {
-        QMessageBox::information(this, "提示", "结束时间必须晚于开始时间");
+        QMessageBox::information(this, I18n::t("common.info"), I18n::t("event.end_before_start"));
         return;
     }
     accept();
 }
 
 void EventDialog::onDeleteClicked() {
-    auto ret = QMessageBox::question(this, "确认删除",
-        "确定要删除「" + m_titleEdit->text().trimmed() + "」吗？此操作无法撤销。",
+    auto ret = QMessageBox::question(this, I18n::t("event.delete_title"),
+        I18n::t("event.delete_confirm_fmt").arg(m_titleEdit->text().trimmed()),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (ret == QMessageBox::Yes) {
         emit requestDelete(m_eventId);

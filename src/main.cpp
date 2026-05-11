@@ -1,6 +1,7 @@
 #include "ui/MainWindow.h"
 #include "core/Database.h"
 #include "core/DeepSeekClient.h"
+#include "core/I18n.h"
 #include "ui/Theme.h"
 #include "ui/FontLoader.h"
 #include "ui/IconRenderer.h"
@@ -21,10 +22,13 @@ int main(int argc, char* argv[]) {
 
     // ---- 应用元信息（QSettings 持久化用） ----
     QApplication::setApplicationName("TimeMaster");
-    QApplication::setApplicationDisplayName("时间管理大师");
     QApplication::setOrganizationName("TimeMaster");
     QApplication::setOrganizationDomain("timemaster.local");
-    QApplication::setApplicationVersion("3.2.0");
+    QApplication::setApplicationVersion("4.0.0");
+
+    // ---- I18n: 加载持久化的语言设置（默认英文） ----
+    timemaster::I18n::instance();
+    QApplication::setApplicationDisplayName(timemaster::I18n::t("app.title"));
 
     // ---- 字体加载（Inter + 思源黑体，回退到系统字体） ----
     timemaster::FontLoader::initialize();
@@ -58,8 +62,8 @@ int main(int argc, char* argv[]) {
     // ---- 数据库 ----
     timemaster::Database db;
     if (!db.open()) {
-        QMessageBox::critical(nullptr, "时间管理大师",
-            QString("数据库初始化失败。\n路径：%1").arg(db.filePath()));
+        QMessageBox::critical(nullptr, timemaster::I18n::t("app.title"),
+            QString("%1\n%2").arg(timemaster::I18n::t("common.error")).arg(db.filePath()));
         return 1;
     }
 

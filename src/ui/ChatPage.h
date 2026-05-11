@@ -8,7 +8,6 @@ class QVBoxLayout;
 class QLineEdit;
 class QPushButton;
 class QLabel;
-class QCheckBox;
 
 namespace timemaster {
 
@@ -16,59 +15,72 @@ class DeepSeekClient;
 class Database;
 
 /**
- * AI 对话页面
- *  - 顶部：上下文开关（是否把日历传给 AI）
- *  - 中部：消息流（用户右红色气泡 + AI 左灰色气泡）
- *  - 底部：输入框 + 发送按钮（Enter 发送）
- *
- * 关键改进：每次发送前，自动从 DB 抓取 ±N 天的日历事件，
- * 格式化为紧凑文本注入到 AI 的 system context 中，
- * AI 因此能回答「下周三我有什么安排」「明天有空吗」之类的问题。
+ * V4 chat page.
+ *  · Top bar: privacy chip (replaces the orphan checkbox) summarising the
+ *    AI-sees-calendar state. Click → opens Settings.
+ *  · Empty state: clean professional copy with three clickable suggestion
+ *    bubbles (no "~呀啦哦人家" particles, no self-anthropomorphic AI persona).
+ *  · Persona is now a concise, professional assistant.
  */
 class ChatPage : public QWidget {
     Q_OBJECT
 public:
     explicit ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent = nullptr);
 
+signals:
+    void openSettingsRequested();
+
 protected:
     void resizeEvent(QResizeEvent *e) override;
 
 private slots:
     void applyTheme();
+    void applyLanguage();
     void onSend();
     void onChatChunk(const QString &delta);
     void onChatFinished(const QString &full);
     void onChatError(const QString &msg);
     void onClear();
+    void onPrivacyChipClicked();
 
 private:
     QLabel *appendBubble(const QString &text, bool isUser, bool isStreaming = false);
     void scrollToBottom();
     void updateBubblesMaxWidth();
+    void rebuildEmptyState();
+    void sendCannedQuery(const QString &q);
 
     QString basePrompt() const;
     QString buildCalendarContext() const;
+    void    updatePrivacyChip();
+
+    bool aiSeesCalendar() const { return m_aiSeesCalendar; }
+    void setAiSeesCalendar(bool v);
 
     Database *m_db;
     DeepSeekClient *m_ai;
 
-    QScrollArea *m_scroll;
-    QWidget *m_msgContainer;
-    QVBoxLayout *m_msgLayout;
-    QLineEdit *m_input;
-    QPushButton *m_sendBtn;
-    QPushButton *m_clearBtn;
-    QCheckBox *m_useCtxCheck;
-    QLabel *m_ctxStatus;
-    QLabel *m_emptyHint;
-    QLabel *m_titleIcon = nullptr;
+    QScrollArea  *m_scroll       = nullptr;
+    QWidget      *m_msgContainer = nullptr;
+    QVBoxLayout  *m_msgLayout    = nullptr;
+    QLineEdit    *m_input        = nullptr;
+    QPushButton  *m_sendBtn      = nullptr;
+    QPushButton  *m_clearBtn     = nullptr;
+    QPushButton  *m_privacyChip  = nullptr;
+    QLabel       *m_titleLabel   = nullptr;
+    QLabel       *m_titleIcon    = nullptr;
 
-    // 跟踪所有气泡，随窗口拉伸刷新它们的 maxWidth
+    QWidget      *m_emptyState   = nullptr;  // 整个空状态卡（含建议气泡）
+    QLabel       *m_emptyTitle   = nullptr;
+    QLabel       *m_emptySubtitle= nullptr;
+    QVector<QPushButton*> m_suggestionButtons;
+
     QList<QLabel*> m_bubbles;
 
-    QLabel *m_currentStreamingBubble = nullptr;
-    QString m_streamingText;
-    bool m_isResponding = false;
+    QLabel  *m_currentStreamingBubble = nullptr;
+    QString  m_streamingText;
+    bool     m_isResponding   = false;
+    bool     m_aiSeesCalendar = true;
 };
 
 } // namespace timemaster

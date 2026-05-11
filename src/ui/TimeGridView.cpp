@@ -1,5 +1,6 @@
 #include "TimeGridView.h"
 #include "Theme.h"
+#include "../core/I18n.h"
 
 #include <QPainter>
 #include <QMouseEvent>
@@ -20,6 +21,9 @@ TimeGridView::TimeGridView(Mode mode, QWidget *parent)
 
     connect(&m_minuteTimer, &QTimer::timeout, this, &TimeGridView::onMinuteTick);
     m_minuteTimer.start(60 * 1000);
+
+    // Repaint when language toggles (weekday labels swap)
+    connect(&I18n::instance(), &I18n::languageChanged, this, [this]{ update(); });
 }
 
 void TimeGridView::setCurrentDate(const QDate &date) {
@@ -210,7 +214,10 @@ void TimeGridView::paintEvent(QPaintEvent *) {
     headBg.setAlphaF(0.5);
     p.fillRect(headRect, headBg);
 
-    static const char *weekdays[] = {"周日","周一","周二","周三","周四","周五","周六"};
+    bool en = I18n::instance().isEnglish();
+    static const char *weekdaysZh[] = {"周日","周一","周二","周三","周四","周五","周六"};
+    static const char *weekdaysEn[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+    const char *const *weekdays = en ? weekdaysEn : weekdaysZh;
     for (int i = 0; i < nDays; ++i) {
         QRect col(int(gridLeft + i * colW), 0, int(colW), m_headerHeight);
         QDate d = days[i];
@@ -266,7 +273,7 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         p.setFont(sf);
         p.setPen(theme.textPlaceholder());
         p.drawText(QRect(8, m_headerHeight, m_timeGutter - 8, 22),
-                   Qt::AlignLeft | Qt::AlignVCenter, "全天");
+                   Qt::AlignLeft | Qt::AlignVCenter, I18n::t("event.all_day"));
     }
 
     p.save();

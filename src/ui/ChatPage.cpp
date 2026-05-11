@@ -3,6 +3,7 @@
 #include "IconRenderer.h"
 #include "../core/DeepSeekClient.h"
 #include "../core/Database.h"
+#include "../core/I18n.h"
 #include "../utils/MarkdownToHtml.h"
 
 #include <QVBoxLayout>
@@ -12,23 +13,19 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
-#include <QCheckBox>
 #include <QTimer>
-#include <QShortcut>
-#include <QKeySequence>
 #include <QDateTime>
 #include <QFrame>
+#include <QSettings>
 
 namespace timemaster {
 
 namespace {
-// 把单条消息文本绑定到一个 QLabel；如果是 AI 消息，做 Markdown → HTML 渲染
 void bindMessageText(QLabel *bubble, const QString &text, bool isUser) {
     if (isUser) {
         bubble->setTextFormat(Qt::PlainText);
         bubble->setText(text);
     } else {
-        // 流式渲染时也会触发，每次重新转一次
         QString html = MarkdownToHtml::convert(text);
         if (html.isEmpty()) html = "<span>…</span>";
         bubble->setTextFormat(Qt::RichText);
@@ -42,49 +39,48 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
 {
     setObjectName("ChatPage");
 
+    // 持久化的隐私开关
+    QSettings settings;
+    m_aiSeesCalendar = settings.value("ai_sees_calendar", true).toBool();
+
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(20, 18, 20, 18);
+    root->setContentsMargins(24, 20, 24, 20);
     root->setSpacing(12);
 
-    // ---- 顶部条 ----
+    // ---- Top bar ----
     auto *topBar = new QFrame;
     topBar->setObjectName("ChatTopBar");
     auto *topLayout = new QHBoxLayout(topBar);
-    topLayout->setContentsMargins(18, 12, 18, 12);
+    topLayout->setContentsMargins(16, 12, 12, 12);
     topLayout->setSpacing(12);
 
-    // 唯一的标题图标 —— 不要再创建第二份
     m_titleIcon = new QLabel;
     m_titleIcon->setObjectName("ChatPageTitleIcon");
-    m_titleIcon->setFixedSize(22, 22);
-    m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavChat, Theme::instance().brand(), 22));
+    m_titleIcon->setFixedSize(20, 20);
 
-    auto *title = new QLabel("AI 对话");
-    title->setObjectName("ChatPageTitle");
+    m_titleLabel = new QLabel;
+    m_titleLabel->setObjectName("ChatPageTitle");
 
-    m_useCtxCheck = new QCheckBox("让 AI 看到我的日历");
-    m_useCtxCheck->setObjectName("CtxCheck");
-    m_useCtxCheck->setChecked(true);
-    m_useCtxCheck->setToolTip("勾选后，每次提问会把过去 7 天与未来 14 天的日程自动发给 AI");
-    m_useCtxCheck->setCursor(Qt::PointingHandCursor);
+    // Privacy chip — replaces the old isolated checkbox (V4 § 6.4)
+    m_privacyChip = new QPushButton;
+    m_privacyChip->setObjectName("PrivacyChip");
+    m_privacyChip->setCursor(Qt::PointingHandCursor);
+    m_privacyChip->setCheckable(false);
+    connect(m_privacyChip, &QPushButton::clicked, this, &ChatPage::onPrivacyChipClicked);
 
-    m_ctxStatus = new QLabel;
-    m_ctxStatus->setObjectName("CtxStatus");
-
-    m_clearBtn = new QPushButton("清空对话");
+    m_clearBtn = new QPushButton;
     m_clearBtn->setObjectName("ChatGhostBtn");
     m_clearBtn->setCursor(Qt::PointingHandCursor);
     connect(m_clearBtn, &QPushButton::clicked, this, &ChatPage::onClear);
 
     topLayout->addWidget(m_titleIcon);
-    topLayout->addWidget(title);
+    topLayout->addWidget(m_titleLabel);
     topLayout->addStretch();
-    topLayout->addWidget(m_ctxStatus);
-    topLayout->addWidget(m_useCtxCheck);
+    topLayout->addWidget(m_privacyChip);
     topLayout->addWidget(m_clearBtn);
     root->addWidget(topBar);
 
-    // ---- 消息滚动区 ----
+    // ---- Message scroll area ----
     auto *chatCard = new QFrame;
     chatCard->setObjectName("ChatCard");
     auto *chatCardLayout = new QVBoxLayout(chatCard);
@@ -102,25 +98,57 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     m_msgLayout->setContentsMargins(38, 24, 38, 24);
     m_msgLayout->setSpacing(14);
 
-    m_emptyHint = new QLabel(
-        "你好呀～我是你的专属时间秘书 ✿\n\n"
-        "可以这样问我：\n"
-        "· 我下周三都有什么安排呀？\n"
-        "· 帮人家规划一下明天的工作好不好～\n"
-        "· 这周哪天最忙呢？\n"
-        "· 给我一些时间管理建议吧"
-    );
-    m_emptyHint->setObjectName("ChatEmptyHint");
-    m_emptyHint->setAlignment(Qt::AlignCenter);
-    m_emptyHint->setWordWrap(true);
-    m_msgLayout->addWidget(m_emptyHint, 0, Qt::AlignCenter);
+    // Empty state (initial)
+    m_emptyState = new QWidget;
+    m_emptyState->setObjectName("ChatEmptyHost");
+    auto *emptyLay = new QVBoxLayout(m_emptyState);
+    emptyLay->setContentsMargins(0, 60, 0, 40);
+    emptyLay->setSpacing(10);
+    emptyLay->setAlignment(Qt::AlignCenter);
+
+    m_emptyTitle = new QLabel;
+    m_emptyTitle->setObjectName("ChatEmptyTitle");
+    m_emptyTitle->setAlignment(Qt::AlignCenter);
+    {
+        QFont f; f.setPointSize(18); f.setWeight(QFont::DemiBold);
+        m_emptyTitle->setFont(f);
+    }
+    emptyLay->addWidget(m_emptyTitle);
+
+    m_emptySubtitle = new QLabel;
+    m_emptySubtitle->setObjectName("ChatEmptySubtitle");
+    m_emptySubtitle->setAlignment(Qt::AlignCenter);
+    emptyLay->addWidget(m_emptySubtitle);
+
+    emptyLay->addSpacing(12);
+
+    // Suggestion bubbles (three)
+    auto *bubblesRow = new QVBoxLayout;
+    bubblesRow->setSpacing(8);
+    bubblesRow->setAlignment(Qt::AlignHCenter);
+    for (const QString &key : {QStringLiteral("chat.suggest.busy"),
+                                QStringLiteral("chat.suggest.plan"),
+                                QStringLiteral("chat.suggest.where")}) {
+        auto *b = new QPushButton;
+        b->setObjectName("ChatSuggestBubble");
+        b->setCursor(Qt::PointingHandCursor);
+        b->setProperty("i18nKey", key);
+        connect(b, &QPushButton::clicked, this, [this, b]{
+            sendCannedQuery(b->text());
+        });
+        bubblesRow->addWidget(b, 0, Qt::AlignHCenter);
+        m_suggestionButtons.append(b);
+    }
+    emptyLay->addLayout(bubblesRow);
+
+    m_msgLayout->addWidget(m_emptyState, 0, Qt::AlignCenter);
     m_msgLayout->addStretch();
 
     m_scroll->setWidget(m_msgContainer);
     chatCardLayout->addWidget(m_scroll);
     root->addWidget(chatCard, 1);
 
-    // ---- 输入区 ----
+    // ---- Input ----
     auto *inputCard = new QFrame;
     inputCard->setObjectName("ChatInputCard");
     auto *inputLayout = new QHBoxLayout(inputCard);
@@ -129,46 +157,89 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
 
     m_input = new QLineEdit;
     m_input->setObjectName("ChatInput");
-    m_input->setPlaceholderText("跟秘书说点什么吧，按 Enter 发送…");
     m_input->setMinimumHeight(40);
 
-    m_sendBtn = new QPushButton("发送 →");
+    m_sendBtn = new QPushButton;
     m_sendBtn->setObjectName("ChatSendBtn");
     m_sendBtn->setMinimumHeight(40);
-    m_sendBtn->setMinimumWidth(90);
+    m_sendBtn->setMinimumWidth(96);
     m_sendBtn->setCursor(Qt::PointingHandCursor);
 
     connect(m_input, &QLineEdit::returnPressed, this, &ChatPage::onSend);
-    connect(m_sendBtn, &QPushButton::clicked, this, &ChatPage::onSend);
+    connect(m_sendBtn, &QPushButton::clicked,   this, &ChatPage::onSend);
 
     inputLayout->addWidget(m_input);
     inputLayout->addWidget(m_sendBtn);
     root->addWidget(inputCard);
 
-    // ---- 信号 ----
-    connect(m_ai, &DeepSeekClient::chatChunk, this, &ChatPage::onChatChunk);
+    connect(m_ai, &DeepSeekClient::chatChunk,    this, &ChatPage::onChatChunk);
     connect(m_ai, &DeepSeekClient::chatFinished, this, &ChatPage::onChatFinished);
-    connect(m_ai, &DeepSeekClient::chatError, this, &ChatPage::onChatError);
+    connect(m_ai, &DeepSeekClient::chatError,    this, &ChatPage::onChatError);
 
-    connect(&Theme::instance(), &Theme::changed, this, &ChatPage::applyTheme);
+    connect(&Theme::instance(), &Theme::changed,        this, &ChatPage::applyTheme);
+    connect(&I18n::instance(),  &I18n::languageChanged, this, &ChatPage::applyLanguage);
+
+    applyLanguage();
     applyTheme();
+}
+
+void ChatPage::onPrivacyChipClicked() {
+    // Toggle in place; updates the chip text instantly
+    setAiSeesCalendar(!m_aiSeesCalendar);
+}
+
+void ChatPage::setAiSeesCalendar(bool v) {
+    m_aiSeesCalendar = v;
+    QSettings().setValue("ai_sees_calendar", v);
+    updatePrivacyChip();
+}
+
+void ChatPage::updatePrivacyChip() {
+    if (!m_privacyChip) return;
+    auto &t = Theme::instance();
+    if (m_aiSeesCalendar) {
+        m_privacyChip->setText(I18n::t("chat.ctx.chip_fmt"));
+        QString brand14 = QString("rgba(%1,%2,%3,0.14)")
+            .arg(t.brand().red()).arg(t.brand().green()).arg(t.brand().blue());
+        QString brand32 = QString("rgba(%1,%2,%3,0.32)")
+            .arg(t.brand().red()).arg(t.brand().green()).arg(t.brand().blue());
+        m_privacyChip->setStyleSheet(QString(
+            "QPushButton#PrivacyChip { background-color:%1; color:%2; "
+            "border:1px solid %3; border-radius:6px; padding:5px 10px; "
+            "font-size:12px; font-weight:600; }"
+            "QPushButton#PrivacyChip:hover { background-color:%4; }")
+            .arg(brand14).arg(t.brand().name()).arg(brand32).arg(brand14));
+    } else {
+        m_privacyChip->setText(I18n::t("chat.ctx.chip_off"));
+        m_privacyChip->setStyleSheet(QString(
+            "QPushButton#PrivacyChip { background-color:transparent; color:%1; "
+            "border:1px solid %2; border-radius:6px; padding:5px 10px; "
+            "font-size:12px; font-weight:500; }"
+            "QPushButton#PrivacyChip:hover { background-color:%3; color:%4; }")
+            .arg(t.textSecondary().name())
+            .arg(t.strokeRgba())
+            .arg(t.cardBgHoverRgba())
+            .arg(t.textPrimary().name()));
+    }
+    m_privacyChip->setToolTip(I18n::t("chat.ctx.tip"));
+}
+
+void ChatPage::applyLanguage() {
+    if (m_titleLabel)    m_titleLabel->setText(I18n::t("chat.title"));
+    if (m_input)         m_input->setPlaceholderText(I18n::t("chat.placeholder"));
+    if (m_sendBtn)       m_sendBtn->setText(I18n::t("chat.send") + QStringLiteral(" →"));
+    if (m_clearBtn)      m_clearBtn->setText(I18n::t("chat.clear"));
+    if (m_emptyTitle)    m_emptyTitle->setText(I18n::t("chat.empty.title"));
+    if (m_emptySubtitle) m_emptySubtitle->setText(I18n::t("chat.empty.subtitle"));
+    for (auto *b : m_suggestionButtons) {
+        b->setText(I18n::t(b->property("i18nKey").toString()));
+    }
+    updatePrivacyChip();
 }
 
 QString ChatPage::basePrompt() const {
     QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd dddd");
-    // 「温柔可爱听话的女秘书」人设
-    return QString(
-        "你叫「小时」，是用户专属的私人时间秘书。\n"
-        "性格设定：温柔、体贴、可爱、听话；以「主人」或「你」称呼用户，自己自称「小时」或「人家」。\n"
-        "回复要求：\n"
-        "1. 语气温柔亲切，时常带一点撒娇的语气词（如「啦」「呢」「呀」），但保持专业不腻歪。\n"
-        "2. 内容专业、准确、可执行 —— 温柔是表面，靠谱是内核。\n"
-        "3. 使用 Markdown 排版：**重点加粗**、列表分点、必要时用 `代码块` 引用具体时间或事件名。\n"
-        "4. 篇幅克制：日常问题 80~200 字以内；规划类问题可以适度展开。\n"
-        "5. 涉及日历的问题，严格基于下方「用户当前日历」实事求是地回答；如果某天没有安排，明确告诉主人「这天暂时是空的」，不要凭空编造。\n"
-        "6. 鼓励主人用日历页顶部的「AI 解析」一键录入待办。\n\n"
-        "今天是 %1。请用以上语气与主人对话。"
-    ).arg(today);
+    return I18n::t("chat.prompt.persona_en").arg(today);
 }
 
 QString ChatPage::buildCalendarContext() const {
@@ -178,13 +249,19 @@ QString ChatPage::buildCalendarContext() const {
     QDateTime end(QDate::currentDate().addDays(14),   QTime(23, 59, 59));
     auto events = m_db->getEventsByRange(start, end);
 
-    if (events.isEmpty()) {
-        return QString("【用户当前日历】\n（过去 7 天 ~ 未来 14 天范围内暂无任何日程）");
-    }
+    bool en = I18n::instance().isEnglish();
+    QString header = en
+        ? "[User calendar] (past 7 days ~ next 14 days)\n"
+        : "【用户当前日历】（过去 7 天 ~ 未来 14 天）\n";
+    QString emptyLine = en
+        ? "[User calendar]\n(No events in past 7 days ~ next 14 days.)"
+        : "【用户当前日历】\n（过去 7 天 ~ 未来 14 天范围内暂无任何日程）";
+    QString allDay = en ? "all day" : "全天";
+    QString urgent = en ? " · urgent" : " · 紧急";
 
-    QString lines;
-    lines += "【用户当前日历】（过去 7 天 ~ 未来 14 天）\n";
+    if (events.isEmpty()) return emptyLine;
 
+    QString lines = header;
     const int kMaxEvents = 80;
     int count = qMin(int(events.size()), kMaxEvents);
 
@@ -192,7 +269,7 @@ QString ChatPage::buildCalendarContext() const {
         const auto &e = events[i];
         QString timeStr;
         if (e.allDay) {
-            timeStr = e.startDate.toString("yyyy-MM-dd") + " 全天";
+            timeStr = e.startDate.toString("yyyy-MM-dd") + " " + allDay;
         } else if (e.startDate.date() == e.endDate.date()) {
             timeStr = QString("%1 %2-%3")
                 .arg(e.startDate.toString("yyyy-MM-dd"))
@@ -204,18 +281,37 @@ QString ChatPage::buildCalendarContext() const {
                 .arg(e.endDate.toString("MM-dd HH:mm"));
         }
 
+        QString catLabel;
+        switch (e.category) {
+            case EventCategory::Work:          catLabel = I18n::t("cat.work"); break;
+            case EventCategory::Study:         catLabel = I18n::t("cat.study"); break;
+            case EventCategory::Entertainment: catLabel = I18n::t("cat.entertainment"); break;
+            case EventCategory::Exercise:      catLabel = I18n::t("cat.exercise"); break;
+            case EventCategory::Rest:          catLabel = I18n::t("cat.rest"); break;
+            case EventCategory::Social:        catLabel = I18n::t("cat.social"); break;
+            case EventCategory::Personal:      catLabel = I18n::t("cat.personal"); break;
+            case EventCategory::Other:         catLabel = I18n::t("cat.other"); break;
+        }
+
         QString line = QString("· %1 | %2").arg(timeStr, e.title);
-        line += QString(" (%1").arg(categoryLabel(e.category));
-        if (e.priority == EventPriority::Urgent) line += " · 紧急";
+        line += QString(" (%1").arg(catLabel);
+        if (e.priority == EventPriority::Urgent) line += urgent;
         line += ")";
         if (!e.location.isEmpty()) line += QString(" @ %1").arg(e.location);
         lines += line + "\n";
     }
-
     if (events.size() > kMaxEvents) {
-        lines += QString("（共 %1 条，仅展示前 %2 条）\n").arg(events.size()).arg(kMaxEvents);
+        lines += QString(en
+            ? "(Showing the first %1 of %2 events.)\n"
+            : "（共 %2 条，仅展示前 %1 条）\n").arg(kMaxEvents).arg(events.size());
     }
     return lines;
+}
+
+void ChatPage::sendCannedQuery(const QString &q) {
+    if (m_isResponding) return;
+    m_input->setText(q);
+    onSend();
 }
 
 void ChatPage::onSend() {
@@ -223,13 +319,11 @@ void ChatPage::onSend() {
     if (text.isEmpty() || m_isResponding) return;
 
     if (!m_ai->hasApiKey()) {
-        appendBubble("主人～需要先去「⚙ 设置」里配置一下 DeepSeek API Key 哦，小时才能帮你做事呢。", false);
+        appendBubble(I18n::t("chat.api.missing"), false);
         return;
     }
 
-    if (m_emptyHint) {
-        m_emptyHint->hide();
-    }
+    if (m_emptyState) m_emptyState->hide();
 
     appendBubble(text, true);
     m_input->clear();
@@ -240,11 +334,8 @@ void ChatPage::onSend() {
     m_currentStreamingBubble = appendBubble("…", false, true);
 
     QString ctx;
-    if (m_useCtxCheck->isChecked()) {
+    if (m_aiSeesCalendar) {
         ctx = buildCalendarContext();
-        m_ctxStatus->setText("📅 已附带日历");
-    } else {
-        m_ctxStatus->setText("");
     }
 
     m_ai->sendChat(text, basePrompt(), ctx);
@@ -269,41 +360,50 @@ void ChatPage::onChatFinished(const QString &full) {
 }
 
 void ChatPage::onChatError(const QString &msg) {
+    QString prefix = I18n::t("chat.error.prefix");
     if (m_currentStreamingBubble) {
-        bindMessageText(m_currentStreamingBubble,
-                        "主人，刚刚出了一点小问题：" + msg, false);
+        bindMessageText(m_currentStreamingBubble, prefix + msg, false);
         m_currentStreamingBubble = nullptr;
     } else {
-        appendBubble("主人，刚刚出了一点小问题：" + msg, false);
+        appendBubble(prefix + msg, false);
     }
     m_isResponding = false;
     m_sendBtn->setEnabled(true);
 }
 
+void ChatPage::rebuildEmptyState() {
+    if (!m_emptyState) return;
+    m_emptyTitle->setText(I18n::t("chat.empty.title"));
+    m_emptySubtitle->setText(I18n::t("chat.empty.subtitle"));
+    for (auto *b : m_suggestionButtons) {
+        b->setText(I18n::t(b->property("i18nKey").toString()));
+    }
+    m_emptyState->show();
+}
+
 void ChatPage::onClear() {
     m_bubbles.clear();
+    // Take everything off the layout except the empty state widget (re-added below)
     while (m_msgLayout->count() > 0) {
         auto *item = m_msgLayout->takeAt(0);
-        if (item->widget()) item->widget()->deleteLater();
+        if (item->widget() && item->widget() != m_emptyState) {
+            item->widget()->deleteLater();
+        }
         delete item;
     }
-    m_emptyHint = new QLabel(
-        "你好呀～我是你的专属时间秘书 ✿\n\n"
-        "可以这样问我：\n"
-        "· 我下周三都有什么安排呀？\n"
-        "· 帮人家规划一下明天的工作好不好～\n"
-        "· 这周哪天最忙呢？\n"
-        "· 给我一些时间管理建议吧"
-    );
-    m_emptyHint->setObjectName("ChatEmptyHint");
-    m_emptyHint->setAlignment(Qt::AlignCenter);
-    m_emptyHint->setWordWrap(true);
-    m_msgLayout->addWidget(m_emptyHint, 0, Qt::AlignCenter);
+    if (!m_emptyState->parent()) {
+        // shouldn't happen, but rebuild defensively
+        m_emptyState = nullptr;
+    }
+    if (m_emptyState) {
+        m_msgLayout->addWidget(m_emptyState, 0, Qt::AlignCenter);
+        m_emptyState->show();
+    }
     m_msgLayout->addStretch();
     m_currentStreamingBubble = nullptr;
     m_isResponding = false;
     m_sendBtn->setEnabled(true);
-    m_ctxStatus->setText("");
+    rebuildEmptyState();
     applyTheme();
 }
 
@@ -312,9 +412,7 @@ QLabel *ChatPage::appendBubble(const QString &text, bool isUser, bool isStreamin
 
     int stretchIdx = -1;
     for (int i = m_msgLayout->count() - 1; i >= 0; --i) {
-        if (m_msgLayout->itemAt(i)->spacerItem()) {
-            stretchIdx = i; break;
-        }
+        if (m_msgLayout->itemAt(i)->spacerItem()) { stretchIdx = i; break; }
     }
     if (stretchIdx >= 0) {
         auto *item = m_msgLayout->takeAt(stretchIdx);
@@ -332,7 +430,6 @@ QLabel *ChatPage::appendBubble(const QString &text, bool isUser, bool isStreamin
     bubble->setObjectName(isUser ? "ChatBubbleUser" : "ChatBubbleAI");
     bindMessageText(bubble, text, isUser);
 
-    // 跟踪并按当前视口宽度设置 maxWidth
     m_bubbles.append(bubble);
     connect(bubble, &QObject::destroyed, this, [this, bubble]() {
         m_bubbles.removeAll(bubble);
@@ -367,9 +464,7 @@ void ChatPage::resizeEvent(QResizeEvent *e) {
 void ChatPage::updateBubblesMaxWidth() {
     if (!m_scroll) return;
     int vw = m_scroll->viewport()->width();
-    // 减去容器左右内边距 (38*2 = 76)，再保留一点和滚动条 / 对侧 stretch 的余量
     int maxW = qMax(240, vw - 76 - 8);
-    // 在大窗口上也不要让单个气泡占满整行，留一点呼吸空间
     int cap = int(vw * 0.92);
     if (cap > 0 && maxW > cap) maxW = cap;
     for (QLabel *b : m_bubbles) {
@@ -383,14 +478,13 @@ void ChatPage::applyTheme() {
     QString brandHover = t.brand().darker(110).name();
     QString textPrim = t.textPrimary().name();
     QString textSec = t.textSecondary().name();
-    QString placeholder = t.textPlaceholder().name();
     QString strokeR = t.strokeRgba();
     QString cardBg = t.cardBgRgba();
     QString componentBg = t.componentBgRgba();
     QString hoverBg = t.cardBgHoverRgba();
 
     if (m_titleIcon) {
-        m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavChat, t.brand(), 22));
+        m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavChat, t.brand(), 20));
     }
 
     setStyleSheet(QString(R"(
@@ -403,52 +497,57 @@ void ChatPage::applyTheme() {
         }
         QLabel#ChatPageTitle {
             font-size: 16px;
-            font-weight: 700;
-            color: %3;
-        }
-        QCheckBox#CtxCheck {
-            color: %3;
-            font-size: 13px;
-        }
-        QCheckBox#CtxCheck::indicator {
-            width: 16px; height: 16px;
-        }
-        QLabel#CtxStatus {
-            color: %7;
-            font-size: 12px;
             font-weight: 600;
-            padding: 4px 12px;
-            background-color: rgba(217,119,87,0.16);
-            border: 1px solid rgba(217,119,87,0.32);
-            border-radius: 10px;
+            color: %3;
+            letter-spacing: -0.1px;
         }
         QPushButton#ChatGhostBtn {
             background-color: transparent;
             color: %5;
             border: 1px solid %2;
-            border-radius: 9px;
-            padding: 6px 14px;
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-weight: 500;
         }
         QPushButton#ChatGhostBtn:hover { background-color: %6; color: %3; }
 
         QFrame#ChatCard {
             background-color: %1;
             border: 1px solid %2;
-            border-radius: 14px;
+            border-radius: 12px;
         }
         QScrollArea#ChatScroll { background-color: transparent; border: none; }
         QWidget#ChatMsgContainer { background-color: transparent; }
-        QLabel#ChatEmptyHint {
-            color: %5;
-            font-size: 14px;
-            line-height: 1.7;
-            padding: 60px 0;
+        QWidget#ChatEmptyHost { background: transparent; }
+
+        QLabel#ChatEmptyTitle {
+            color: %3;
             background: transparent;
+            letter-spacing: -0.2px;
         }
+        QLabel#ChatEmptySubtitle {
+            color: %5;
+            background: transparent;
+            font-size: 14px;
+        }
+        QPushButton#ChatSuggestBubble {
+            background-color: %4;
+            color: %3;
+            border: 1px solid %2;
+            border-radius: 16px;
+            padding: 9px 16px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        QPushButton#ChatSuggestBubble:hover {
+            background-color: %6;
+            border-color: %5;
+        }
+
         QLabel#ChatBubbleUser {
             background-color: %7;
             color: white;
-            border-radius: 15px;
+            border-radius: 14px;
             padding: 11px 16px;
             font-size: 14px;
         }
@@ -456,7 +555,7 @@ void ChatPage::applyTheme() {
             background-color: %4;
             color: %3;
             border: 1px solid %2;
-            border-radius: 15px;
+            border-radius: 14px;
             padding: 12px 16px;
             font-size: 14px;
         }
@@ -464,13 +563,13 @@ void ChatPage::applyTheme() {
         QFrame#ChatInputCard {
             background-color: %1;
             border: 1px solid %2;
-            border-radius: 14px;
+            border-radius: 12px;
         }
         QLineEdit#ChatInput {
             background-color: transparent;
             color: %3;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             padding: 0 8px;
             font-size: 14px;
         }
@@ -479,7 +578,7 @@ void ChatPage::applyTheme() {
             background-color: %7;
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             font-weight: 600;
             padding: 0 18px;
         }
@@ -495,9 +594,7 @@ void ChatPage::applyTheme() {
     /*7*/.arg(brand)
     /*8*/.arg(brandHover));
 
-    if (m_titleIcon) {
-        m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavChat, t.brand(), 22));
-    }
+    updatePrivacyChip();
 }
 
 } // namespace timemaster

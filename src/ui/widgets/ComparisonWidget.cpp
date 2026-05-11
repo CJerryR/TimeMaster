@@ -1,6 +1,7 @@
 #include "ComparisonWidget.h"
 #include "../Theme.h"
 #include "../../core/Database.h"
+#include "../../core/I18n.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -11,21 +12,20 @@
 
 namespace timemaster {
 
-static QFrame *makeMiniCard(QLabel **valueOut, QLabel **captionOut,
-                            const QString &caption) {
+static QFrame *makeMiniCard(QLabel **valueOut, QLabel **captionOut) {
     auto *f = new QFrame;
     f->setObjectName("CompCard");
     auto *lay = new QVBoxLayout(f);
     lay->setContentsMargins(18, 14, 18, 14);
     lay->setSpacing(2);
 
-    auto *cap = new QLabel(caption);
+    auto *cap = new QLabel();
     cap->setObjectName("CompCaption");
     lay->addWidget(cap);
 
     auto *val = new QLabel("—");
     val->setObjectName("CompValue");
-    QFont vf; vf.setPointSize(20); vf.setWeight(QFont::Bold);
+    QFont vf; vf.setPointSize(18); vf.setWeight(QFont::DemiBold);
     val->setFont(vf);
     lay->addWidget(val);
 
@@ -41,44 +41,40 @@ ComparisonWidget::ComparisonWidget(Database *db, QWidget *parent)
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(10);
 
-    m_title = new QLabel("过去 / 未来 一周对比");
+    m_title = new QLabel();
     m_title->setProperty("class", "subtitle");
     root->addWidget(m_title);
 
     auto *row = new QHBoxLayout;
     row->setSpacing(10);
 
-    // 过去
     m_pastCard = new QFrame;
     m_pastCard->setObjectName("CompPanePast");
     auto *pastLay = new QVBoxLayout(m_pastCard);
     pastLay->setContentsMargins(16, 14, 16, 14);
     pastLay->setSpacing(8);
-    auto *pastHeader = new QLabel("过去 7 天 · 已度过");
-    pastHeader->setObjectName("CompHeader");
-    pastLay->addWidget(pastHeader);
+    m_pastHeader = new QLabel();
+    m_pastHeader->setObjectName("CompHeader");
+    pastLay->addWidget(m_pastHeader);
     auto *pastRow = new QHBoxLayout;
     pastRow->setSpacing(8);
-    QLabel *pastCap1, *pastCap2;
-    pastRow->addWidget(makeMiniCard(&m_pastCountVal, &pastCap1, "事件"));
-    pastRow->addWidget(makeMiniCard(&m_pastHoursVal, &pastCap2, "时长"));
+    pastRow->addWidget(makeMiniCard(&m_pastCountVal, &m_pastCap1));
+    pastRow->addWidget(makeMiniCard(&m_pastHoursVal, &m_pastCap2));
     pastLay->addLayout(pastRow);
     row->addWidget(m_pastCard, 1);
 
-    // 未来
     m_futCard = new QFrame;
     m_futCard->setObjectName("CompPaneFuture");
     auto *futLay = new QVBoxLayout(m_futCard);
     futLay->setContentsMargins(16, 14, 16, 14);
     futLay->setSpacing(8);
-    auto *futHeader = new QLabel("未来 7 天 · 待迎接");
-    futHeader->setObjectName("CompHeader");
-    futLay->addWidget(futHeader);
+    m_futHeader = new QLabel();
+    m_futHeader->setObjectName("CompHeader");
+    futLay->addWidget(m_futHeader);
     auto *futRow = new QHBoxLayout;
     futRow->setSpacing(8);
-    QLabel *futCap1, *futCap2;
-    futRow->addWidget(makeMiniCard(&m_futCountVal, &futCap1, "事件"));
-    futRow->addWidget(makeMiniCard(&m_futHoursVal, &futCap2, "时长"));
+    futRow->addWidget(makeMiniCard(&m_futCountVal, &m_futCap1));
+    futRow->addWidget(makeMiniCard(&m_futHoursVal, &m_futCap2));
     futLay->addLayout(futRow);
     row->addWidget(m_futCard, 1);
 
@@ -90,11 +86,26 @@ ComparisonWidget::ComparisonWidget(Database *db, QWidget *parent)
     m_deltaLabel->setMinimumHeight(28);
     root->addWidget(m_deltaLabel);
 
-    connect(&Theme::instance(), &Theme::changed, this, &ComparisonWidget::applyTheme);
+    connect(&Theme::instance(), &Theme::changed,        this, &ComparisonWidget::applyTheme);
+    connect(&I18n::instance(),  &I18n::languageChanged, this, &ComparisonWidget::applyLanguage);
+
+    applyLanguage();
     applyTheme();
 }
 
+void ComparisonWidget::applyLanguage() {
+    if (m_title)      m_title->setText(I18n::t("widget.comparison"));
+    if (m_pastHeader) m_pastHeader->setText(I18n::t("widget.past_header"));
+    if (m_futHeader)  m_futHeader->setText(I18n::t("widget.future_header"));
+    if (m_pastCap1)   m_pastCap1->setText(I18n::t("widget.events"));
+    if (m_pastCap2)   m_pastCap2->setText(I18n::t("widget.duration"));
+    if (m_futCap1)    m_futCap1->setText(I18n::t("widget.events"));
+    if (m_futCap2)    m_futCap2->setText(I18n::t("widget.duration"));
+    refresh();
+}
+
 void ComparisonWidget::refresh() {
+    if (!m_db) return;
     QDateTime now = QDateTime::currentDateTime();
     QDateTime past7Start(QDate::currentDate().addDays(-7), QTime(0, 0));
     QDateTime past7End = now;
@@ -132,23 +143,22 @@ void ComparisonWidget::refresh() {
     m_futCountVal->setText(QString::number(futCnt));
     m_futHoursVal->setText(fmt(futMin));
 
-    // 节奏对比
     auto &t = Theme::instance();
     QString deltaText;
     QString color;
     if (pastMin == 0 && futMin == 0) {
-        deltaText = "近期都很轻松，做点自己喜欢的事吧";
+        deltaText = I18n::t("widget.delta.easy");
         color = t.textSecondary().name();
     } else if (futMin > pastMin * 1.2) {
         qint64 diff = futMin - pastMin;
-        deltaText = QString("下一周比过去多 %1，准备好节奏切换").arg(fmt(diff));
+        deltaText = I18n::t("widget.delta.more_fmt").arg(fmt(diff));
         color = t.brand().name();
     } else if (futMin < pastMin * 0.8) {
         qint64 diff = pastMin - futMin;
-        deltaText = QString("下一周比过去少 %1，余出来的时间可以做点什么？").arg(fmt(diff));
+        deltaText = I18n::t("widget.delta.less_fmt").arg(fmt(diff));
         color = t.success().name();
     } else {
-        deltaText = "节奏稳定，保持。";
+        deltaText = I18n::t("widget.delta.stable");
         color = t.textSecondary().name();
     }
     m_deltaLabel->setText(deltaText);
@@ -190,7 +200,7 @@ void ComparisonWidget::applyTheme() {
         }
         QLabel#CompCaption {
             color: %4;
-            font-size: 11px;
+            font-size: 12px;
         }
     )")
     .arg(cardBg)

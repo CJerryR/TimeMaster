@@ -1,4 +1,5 @@
 #include "Types.h"
+#include "I18n.h"
 
 namespace timemaster {
 
@@ -52,16 +53,16 @@ QString categoryToString(EventCategory c) {
 
 QString categoryLabel(EventCategory c) {
     switch (c) {
-        case EventCategory::Work:          return "工作";
-        case EventCategory::Study:         return "学习";
-        case EventCategory::Entertainment: return "娱乐";
-        case EventCategory::Exercise:      return "运动";
-        case EventCategory::Rest:          return "休息";
-        case EventCategory::Social:        return "社交";
-        case EventCategory::Personal:      return "个人";
-        case EventCategory::Other:         return "其他";
+        case EventCategory::Work:          return I18n::t("cat.work");
+        case EventCategory::Study:         return I18n::t("cat.study");
+        case EventCategory::Entertainment: return I18n::t("cat.entertainment");
+        case EventCategory::Exercise:      return I18n::t("cat.exercise");
+        case EventCategory::Rest:          return I18n::t("cat.rest");
+        case EventCategory::Social:        return I18n::t("cat.social");
+        case EventCategory::Personal:      return I18n::t("cat.personal");
+        case EventCategory::Other:         return I18n::t("cat.other");
     }
-    return "其他";
+    return I18n::t("cat.other");
 }
 
 EventCategory stringToCategory(const QString &s) {
@@ -108,11 +109,11 @@ QString priorityToString(EventPriority p) {
 
 QString priorityLabel(EventPriority p) {
     switch (p) {
-        case EventPriority::Urgent: return "紧急";
-        case EventPriority::Normal: return "普通";
-        case EventPriority::Low:    return "低优先级";
+        case EventPriority::Urgent: return I18n::t("pri.urgent");
+        case EventPriority::Normal: return I18n::t("pri.normal");
+        case EventPriority::Low:    return I18n::t("pri.low");
     }
-    return "普通";
+    return I18n::t("pri.normal");
 }
 
 EventPriority stringToPriority(const QString &s) {

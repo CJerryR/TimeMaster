@@ -29,6 +29,7 @@ public:
 
 private slots:
     void applyTheme();
+    void applyLanguage();
     void reloadBatches();
     void onBatchSelected();
     void onUndoBatch();
@@ -50,6 +51,13 @@ private:
     QPushButton *m_undoBtn;
     QPushButton *m_archiveBtn;
     QPushButton *m_deleteEventBtn;
+    QPushButton *m_closeBtn = nullptr;
+
+    QLabel *m_titleLabel    = nullptr;
+    QLabel *m_subtitleLabel = nullptr;
+    QLabel *m_leftHeader    = nullptr;
+    QLabel *m_srcCaption    = nullptr;
+    QLabel *m_evCaption     = nullptr;
 
     QList<AiBatchInfo> m_batches;
     QList<CalendarEvent> m_currentBatchEvents;

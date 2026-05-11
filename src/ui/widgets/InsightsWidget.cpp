@@ -1,6 +1,7 @@
 #include "InsightsWidget.h"
 #include "../Theme.h"
 #include "../../core/Database.h"
+#include "../../core/I18n.h"
 
 #include <QVBoxLayout>
 #include <QLabel>
@@ -14,7 +15,7 @@ InsightsWidget::InsightsWidget(Database *db, QWidget *parent)
     lay->setContentsMargins(0, 0, 0, 0);
     lay->setSpacing(8);
 
-    m_title = new QLabel("智能洞察");
+    m_title = new QLabel(I18n::t("widget.insights"));
     m_title->setProperty("class", "subtitle");
     lay->addWidget(m_title);
 
@@ -23,17 +24,28 @@ InsightsWidget::InsightsWidget(Database *db, QWidget *parent)
     m_text->setMinimumHeight(60);
     lay->addWidget(m_text);
     lay->addStretch();
+
+    connect(&I18n::instance(), &I18n::languageChanged, this, [this]{
+        if (m_title) m_title->setText(I18n::t("widget.insights"));
+        if (m_lastStart.isValid() && m_lastEnd.isValid()) {
+            refresh(m_lastStart, m_lastEnd);
+        }
+    });
 }
 
 void InsightsWidget::refresh(const QDateTime &start, const QDateTime &end) {
+    m_lastStart = start;
+    m_lastEnd = end;
+    if (!m_db) return;
+
     auto stats = m_db->getCategoryStats(start, end);
     auto daily = m_db->getDailySummaries(start, end);
 
     auto &theme = Theme::instance();
     QStringList insights;
     QString color = theme.textPrimary().name();
-    QString sub = theme.textSecondary().name();
-    QString br = theme.brand().name();
+    QString sub   = theme.textSecondary().name();
+    QString br    = theme.brand().name();
 
     qint64 total = 0;
     int count = 0;
@@ -41,27 +53,31 @@ void InsightsWidget::refresh(const QDateTime &start, const QDateTime &end) {
     int days = qMax(1, int(start.daysTo(end)));
 
     if (total <= 0) {
-        insights << QString("<span style='color:%1'>📭 该时间段暂无记录</span>").arg(sub);
+        insights << QString("<span style='color:%1'>📭 %2</span>")
+                        .arg(sub).arg(I18n::t("widget.insights.no_records"));
     } else {
         qint64 avgDaily = total / days;
         qint64 h = avgDaily / 60;
         qint64 m = avgDaily % 60;
         if (avgDaily > 0) {
-            insights << QString("<span style='color:%1'>⏱ 日均追踪 </span>"
-                               "<span style='color:%2;font-weight:bold;'>%3h %4m</span>")
-                           .arg(color).arg(br).arg(h).arg(m);
+            QString core = I18n::t("widget.insights.avg_fmt")
+                              .arg(h).arg(m);
+            insights << QString("<span style='color:%1'>⏱ </span>"
+                                "<span style='color:%2;font-weight:bold;'>%3</span>")
+                            .arg(color).arg(br).arg(core);
         }
 
         qint64 workMin = 0, studyMin = 0;
         for (const auto &s : stats) {
-            if (s.category == EventCategory::Work) workMin = s.totalMinutes;
+            if (s.category == EventCategory::Work)  workMin  = s.totalMinutes;
             if (s.category == EventCategory::Study) studyMin = s.totalMinutes;
         }
         if (workMin + studyMin > 0) {
             double pct = double(workMin + studyMin) / total * 100.0;
-            insights << QString("<span style='color:%1'>📊 工作学习占比 </span>"
-                               "<span style='color:%2;font-weight:bold;'>%3%</span>")
-                           .arg(color).arg(br).arg(pct, 0, 'f', 0);
+            QString core = I18n::t("widget.insights.work_pct_fmt").arg(int(pct));
+            insights << QString("<span style='color:%1'>📊 </span>"
+                                "<span style='color:%2;font-weight:bold;'>%3</span>")
+                            .arg(color).arg(br).arg(core);
         }
 
         if (daily.size() >= 3) {
@@ -70,16 +86,16 @@ void InsightsWidget::refresh(const QDateTime &start, const QDateTime &end) {
                 if (daily[i].totalMinutes > 0) ++streak; else break;
             }
             if (streak >= 3) {
-                insights << QString("<span style='color:%1'>🔥 连续 </span>"
-                                   "<span style='color:%2;font-weight:bold;'>%3 天</span>"
-                                   "<span style='color:%1'> 保持记录</span>")
-                               .arg(color).arg(br).arg(streak);
+                QString core = I18n::t("widget.insights.streak_fmt").arg(streak);
+                insights << QString("<span style='color:%1'>🔥 </span>"
+                                    "<span style='color:%2;font-weight:bold;'>%3</span>")
+                                .arg(color).arg(br).arg(core);
             }
         }
     }
 
     QString html = QString("<div style='line-height:1.7;'>%1</div>")
-                       .arg(insights.join("&nbsp;&nbsp;|&nbsp;&nbsp;"));
+                        .arg(insights.join("&nbsp;&nbsp;|&nbsp;&nbsp;"));
     m_text->setText(html);
     m_text->setTextFormat(Qt::RichText);
 }

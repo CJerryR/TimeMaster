@@ -4,61 +4,43 @@
 #include "AnalyticsPage.h"
 #include "ChatPage.h"
 #include "SettingsDialog.h"
+#include "OnboardingDialog.h"
 #include "Theme.h"
 #include "../core/Database.h"
 #include "../core/DeepSeekClient.h"
+#include "../core/I18n.h"
 
 #include <QStackedWidget>
 #include <QHBoxLayout>
-#include <QVBoxLayout>
 #include <QWidget>
 #include <QPainter>
 #include <QPaintEvent>
-#include <QLinearGradient>
-#include <QRadialGradient>
+#include <QSettings>
+#include <QTimer>
 
 namespace timemaster {
 
+/**
+ * V4 § 2.3 / § 7.4 — gradient and radial glow removed.
+ * Page background is a flat bgPage() fill; cards layer above with subtle stroke.
+ */
 class PageBackground : public QWidget {
     Q_OBJECT
 public:
     explicit PageBackground(QWidget *parent = nullptr) : QWidget(parent) {
         setAutoFillBackground(false);
     }
-
 protected:
     void paintEvent(QPaintEvent *) override {
         QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing);
-
-        auto &t = Theme::instance();
-        QLinearGradient grad(QPointF(0, 0), QPointF(width(), height()));
-        grad.setColorAt(0.0, t.bgPageTop());
-        grad.setColorAt(1.0, t.bgPageBottom());
-        p.fillRect(rect(), grad);
-
-        QColor glow1 = t.brand();
-        glow1.setAlphaF(0.06);
-        QRadialGradient r1(QPointF(width() * 0.88, height() * 0.06),
-                           qMax(width(), height()) * 0.5);
-        r1.setColorAt(0.0, glow1);
-        r1.setColorAt(1.0, Qt::transparent);
-        p.fillRect(rect(), r1);
-
-        QColor glow2 = t.accent();
-        glow2.setAlphaF(0.05);
-        QRadialGradient r2(QPointF(width() * 0.08, height() * 0.94),
-                           qMax(width(), height()) * 0.55);
-        r2.setColorAt(0.0, glow2);
-        r2.setColorAt(1.0, Qt::transparent);
-        p.fillRect(rect(), r2);
+        p.fillRect(rect(), Theme::instance().bgPage());
     }
 };
 
 MainWindow::MainWindow(Database *db, DeepSeekClient *ai, QWidget *parent)
     : QMainWindow(parent), m_db(db), m_ai(ai)
 {
-    setWindowTitle("时间管理大师 · Time Master");
+    setWindowTitle(I18n::t("app.window_title"));
     resize(1320, 840);
     setMinimumSize(1000, 660);
 
@@ -75,9 +57,9 @@ MainWindow::MainWindow(Database *db, DeepSeekClient *ai, QWidget *parent)
     m_stack = new QStackedWidget;
     m_stack->setStyleSheet("QStackedWidget{background:transparent;}");
 
-    m_calendarPage = new CalendarPage(m_db, m_ai);
+    m_calendarPage  = new CalendarPage(m_db, m_ai);
     m_analyticsPage = new AnalyticsPage(m_db);
-    m_chatPage = new ChatPage(m_db, m_ai);
+    m_chatPage      = new ChatPage(m_db, m_ai);
 
     m_stack->addWidget(m_calendarPage);
     m_stack->addWidget(m_analyticsPage);
@@ -88,16 +70,31 @@ MainWindow::MainWindow(Database *db, DeepSeekClient *ai, QWidget *parent)
         m_stack->setCurrentIndex(idx);
         if (idx == 1) m_analyticsPage->refresh();
     });
-    connect(m_sidebar, &Sidebar::themeToggleRequested, this, &MainWindow::onThemeToggle);
-    connect(m_sidebar, &Sidebar::settingsRequested, this, &MainWindow::onSettings);
+    connect(m_sidebar, &Sidebar::themeToggleRequested,    this, &MainWindow::onThemeToggle);
+    connect(m_sidebar, &Sidebar::settingsRequested,       this, &MainWindow::onSettings);
+    connect(m_sidebar, &Sidebar::languageToggleRequested, this, []{ I18n::instance().toggle(); });
 
-    connect(&Theme::instance(), &Theme::changed, this, &MainWindow::applyTheme);
+    connect(&Theme::instance(), &Theme::changed,        this, &MainWindow::applyTheme);
+    connect(&I18n::instance(),  &I18n::languageChanged, this, [this]{
+        setWindowTitle(I18n::t("app.window_title"));
+    });
     applyTheme();
+
+    // V4 § 5.4 first-run onboarding (deferred so the main window paints first)
+    QTimer::singleShot(120, this, &MainWindow::showOnboardingIfFirstRun);
 }
 
-void MainWindow::onThemeToggle() {
-    Theme::instance().toggle();
+void MainWindow::showOnboardingIfFirstRun() {
+    QSettings s;
+    if (s.value("onboarded", false).toBool()) return;
+    OnboardingDialog dlg(m_ai, this);
+    dlg.exec();
+    // After onboarding (whether finished or skipped), language may have changed
+    // so refresh the window title.
+    setWindowTitle(I18n::t("app.window_title"));
 }
+
+void MainWindow::onThemeToggle() { Theme::instance().toggle(); }
 
 void MainWindow::onSettings() {
     SettingsDialog dlg(m_ai, m_db->filePath(), this);

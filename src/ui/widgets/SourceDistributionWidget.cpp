@@ -1,5 +1,6 @@
 #include "SourceDistributionWidget.h"
 #include "../Theme.h"
+#include "../../core/I18n.h"
 
 #include <QPainter>
 #include <QPainterPath>
@@ -12,11 +13,15 @@ namespace timemaster {
 SourceDistributionWidget::SourceDistributionWidget(QWidget *parent) : QWidget(parent) {
     auto *lay = new QVBoxLayout(this);
     lay->setContentsMargins(0, 0, 0, 0);
-    m_title = new QLabel("来源分布");
+    m_title = new QLabel(I18n::t("widget.source"));
     m_title->setProperty("class", "subtitle");
     lay->addWidget(m_title);
     m_bar = new SourceBar();
     lay->addWidget(m_bar, 1);
+    connect(&I18n::instance(), &I18n::languageChanged, this, [this]{
+        if (m_title) m_title->setText(I18n::t("widget.source"));
+        if (m_bar) m_bar->update();
+    });
 }
 
 void SourceDistributionWidget::setSources(int manual, int ai, int imported) {
@@ -44,7 +49,7 @@ void SourceBar::paintEvent(QPaintEvent *) {
     int total = m_manual + m_ai + m_import;
     if (total <= 0) {
         p.setPen(theme.textPlaceholder());
-        p.drawText(rect(), Qt::AlignCenter, "暂无数据");
+        p.drawText(rect(), Qt::AlignCenter, timemaster::I18n::t("widget.no_data"));
         return;
     }
 
@@ -77,14 +82,17 @@ void SourceBar::paintEvent(QPaintEvent *) {
 
     int legendY = y + h + 12;
     int legendX = 10;
-    drawLegend(p, legendX, legendY, cManual, QString("手动 (%1%)").arg(int(rManual * 100)));
-    legendX += 80;
+    drawLegend(p, legendX, legendY, cManual,
+        timemaster::I18n::t("widget.source.manual_fmt").arg(int(rManual * 100)));
+    legendX += 90;
     if (m_ai > 0) {
-        drawLegend(p, legendX, legendY, cAi, QString("AI 解析 (%1%)").arg(int(rAi * 100)));
-        legendX += 90;
+        drawLegend(p, legendX, legendY, cAi,
+            timemaster::I18n::t("widget.source.ai_fmt").arg(int(rAi * 100)));
+        legendX += 100;
     }
     if (m_import > 0)
-        drawLegend(p, legendX, legendY, cImport, QString("导入 (%1%)").arg(int(rImport * 100)));
+        drawLegend(p, legendX, legendY, cImport,
+            timemaster::I18n::t("widget.source.import_fmt").arg(int(rImport * 100)));
 }
 
 void SourceBar::drawSegment(QPainter &p, int x, int y, int w, int h, QColor c, bool left) {
@@ -103,7 +111,7 @@ void SourceBar::drawLegend(QPainter &p, int x, int y, QColor c, const QString &t
     p.setPen(Qt::NoPen);
     p.drawRect(QRect(x, y + 2, 10, 10));
     p.setPen(Theme::instance().textSecondary());
-    p.drawText(QRect(x + 14, y, 100, 16), Qt::AlignLeft | Qt::AlignVCenter, txt);
+    p.drawText(QRect(x + 14, y, 140, 16), Qt::AlignLeft | Qt::AlignVCenter, txt);
 }
 
 } // namespace timemaster
