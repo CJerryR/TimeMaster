@@ -7,6 +7,8 @@
 #include <QUuid>
 #include <QDebug>
 #include <QVariant>
+#include <QStandardPaths>
+
 namespace timemaster {
 
 Database::Database(QObject *parent) : QObject(parent) {
@@ -19,7 +21,11 @@ Database::~Database() {
 }
 
 bool Database::open() {
-    QString dataDir = QCoreApplication::applicationDirPath();
+    // 优先使用系统数据目录；如果失败，退回到 exe 同级目录
+    QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    if (dataDir.isEmpty()) {
+        dataDir = QCoreApplication::applicationDirPath();
+    }
     QDir().mkpath(dataDir);
     m_dbPath = dataDir + "/timemaster.db";
 

@@ -1,34 +1,35 @@
 #pragma once
 
 #include <QWidget>
-#include <QLabel>
+
+class QLabel;
 
 namespace timemaster {
 
-/**
- * 数据来源分布：手动 / AI 解析 / AI 对话。
- * 顶部标题 + 一根堆叠条 + 三条 legend。
- */
+class SourceBar : public QWidget {
+    Q_OBJECT
+public:
+    explicit SourceBar(QWidget *parent = nullptr);
+    void setSources(int manual, int ai, int imported);
+
+protected:
+    void paintEvent(QPaintEvent *) override;
+
+private:
+    int m_manual = 0, m_ai = 0, m_import = 0;
+    void drawSegment(QPainter &p, int x, int y, int w, int h, QColor c, bool left);
+    void drawLegend(QPainter &p, int x, int y, QColor c, const QString &txt);
+};
+
 class SourceDistributionWidget : public QWidget {
     Q_OBJECT
 public:
     explicit SourceDistributionWidget(QWidget *parent = nullptr);
-    void setSources(int manualCount, int aiParseCount, int chatCount);
-
-    QSize sizeHint() const override { return QSize(360, 220); }
-
-protected:
-    void paintEvent(QPaintEvent *event) override;
+    void setSources(int manual, int ai, int imported);
 
 private:
-    void applyTheme();
-
-    QLabel *m_title = nullptr;
-    QLabel *m_subtitle = nullptr;
-
-    int m_manual = 0;
-    int m_aiParse = 0;
-    int m_chat = 0;
+    QLabel *m_title;
+    SourceBar *m_bar;
 };
 
 } // namespace timemaster

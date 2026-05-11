@@ -136,7 +136,7 @@ QList<TimeGridView::EventLayout> TimeGridView::layoutDayEvents(const QDate &date
             }
         }
         if (!placed) {
-            columns.append(QList<int>{i});
+            columns.append({i});
             assigned[i] = columns.size() - 1;
         }
     }

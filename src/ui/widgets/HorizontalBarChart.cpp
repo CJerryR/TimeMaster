@@ -1,23 +1,19 @@
 #include "HorizontalBarChart.h"
 #include "../Theme.h"
+#include "../../core/Types.h"
 
 #include <QPainter>
 #include <QPainterPath>
-#include <algorithm>
+#include <QtMath>
 
 namespace timemaster {
 
 HorizontalBarChart::HorizontalBarChart(QWidget *parent) : QWidget(parent) {
-    setMinimumHeight(220);
-    setAttribute(Qt::WA_StyledBackground, false);
-    connect(&Theme::instance(), &Theme::changed, this, QOverload<>::of(&QWidget::update));
+    setMinimumHeight(180);
 }
 
 void HorizontalBarChart::setData(const QList<CategoryStat> &stats) {
     m_stats = stats;
-    std::sort(m_stats.begin(), m_stats.end(), [](const CategoryStat &a, const CategoryStat &b) {
-        return a.totalMinutes > b.totalMinutes;
-    });
     update();
 }
 
@@ -26,81 +22,56 @@ void HorizontalBarChart::paintEvent(QPaintEvent *) {
     p.setRenderHint(QPainter::Antialiasing);
 
     auto &theme = Theme::instance();
-    auto palette = theme.palette();
+    auto pal = theme.palette();
 
-    // 空数据态
     if (m_stats.isEmpty()) {
         p.setPen(theme.textPlaceholder());
         p.drawText(rect(), Qt::AlignCenter, "暂无数据");
         return;
     }
 
-    qint64 maxV = 1;
-    for (const auto &s : m_stats) if (s.totalMinutes > maxV) maxV = s.totalMinutes;
+    int barH = 32;
+    int gap = 10;
+    int totalH = m_stats.size() * (barH + gap) - gap;
+    int startY = (height() - totalH) / 2;
 
-    const int n = m_stats.size();
-    const int padTop = 6;
-    const int padBot = 6;
-    const int labelW = 60;    // 左侧类别名
-    const int valueW = 70;    // 右侧时长
-    const int gapH = 10;
-    const int barAreaX = labelW + 8;
-    const int barAreaW = std::max(40, width() - barAreaX - valueW - 8);
+    QFont nameFont = font();
+    nameFont.setPointSize(11);
+    p.setFont(nameFont);
 
-    int barH = (height() - padTop - padBot - (n - 1) * gapH) / std::max(1, n);
-    barH = std::clamp(barH, 14, 32);
+    qint64 maxMin = 0;
+    for (const auto &s : m_stats)
+        if (s.totalMinutes > maxMin) maxMin = s.totalMinutes;
+    if (maxMin <= 0) maxMin = 1;
 
-    QFont labelFont = font();
-    labelFont.setPointSize(10);
-    p.setFont(labelFont);
+    int labelW = 80;
+    int barAreaW = width() - labelW - 70;
+    int barLeft = labelW + 10;
 
-    int y = padTop;
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < m_stats.size(); ++i) {
         const auto &s = m_stats[i];
-        EventColor ec = categoryDefaultColor(s.category);
-        QColor barColor = palette.value(ec).bg;
+        int y = startY + i * (barH + gap);
 
-        // 左侧类别名
+        QColor c = pal[categoryDefaultColor(s.category)].text;
+
         p.setPen(theme.textPrimary());
-        QRect labelRect(0, y, labelW, barH);
-        p.drawText(labelRect, Qt::AlignVCenter | Qt::AlignRight, categoryLabel(s.category));
+        p.drawText(QRect(0, y, labelW, barH), Qt::AlignRight | Qt::AlignVCenter,
+                   categoryLabel(s.category));
 
-        // 条形背景（轨道）
-        QRect track(barAreaX, y + (barH - 12) / 2, barAreaW, 12);
-        QPainterPath trackPath;
-        trackPath.addRoundedRect(track, 6, 6);
-        p.fillPath(trackPath, theme.bgHover());
+        int barW = int(double(s.totalMinutes) / maxMin * barAreaW);
+        if (barW < 4) barW = 4;
+        QRect barR(barLeft, y, barW, barH);
 
-        // 实际条形
-        double ratio = double(s.totalMinutes) / double(maxV);
-        int filledW = int(track.width() * ratio);
-        if (filledW < 2 && s.totalMinutes > 0) filledW = 2;
-        if (filledW > 0) {
-            QRect bar(track.x(), track.y(), filledW, track.height());
-            QPainterPath barPath;
-            barPath.addRoundedRect(bar, 6, 6);
-            // 渐变让条形有质感
-            QLinearGradient grad(bar.topLeft(), bar.topRight());
-            grad.setColorAt(0.0, barColor.lighter(115));
-            grad.setColorAt(1.0, barColor);
-            p.fillPath(barPath, grad);
-        }
+        QPainterPath path;
+        path.addRoundedRect(barR, 6, 6);
+        p.fillPath(path, c);
 
-        // 右侧时长
-        qint64 m = s.totalMinutes;
-        QString vText;
-        if (m >= 60) {
-            qint64 h = m / 60;
-            qint64 mm = m % 60;
-            vText = mm == 0 ? QString("%1h").arg(h) : QString("%1h%2m").arg(h).arg(mm);
-        } else {
-            vText = QString("%1m").arg(m);
-        }
-        p.setPen(theme.textSecondary());
-        QRect valueRect(barAreaX + barAreaW + 4, y, valueW - 4, barH);
-        p.drawText(valueRect, Qt::AlignVCenter | Qt::AlignLeft, vText);
-
-        y += barH + gapH;
+        p.setPen(theme.textPrimary());
+        QRect valR(barLeft + barW + 8, y, 60, barH);
+        qint64 h = s.totalMinutes / 60;
+        qint64 m = s.totalMinutes % 60;
+        QString val = h > 0 ? QString("%1h %2m").arg(h).arg(m) : QString("%1m").arg(m);
+        p.drawText(valR, Qt::AlignLeft | Qt::AlignVCenter, val);
     }
 }
 

@@ -345,7 +345,7 @@ void EventDialog::refreshCategoryButtons() {
 
 void EventDialog::refreshPriorityButtons() {
     auto prios = allPriorities();
-    QStringList tints = {"#dc2626", "#4f46e5", "#71717a"};
+    QStringList tints = {"#B8453E", "#C28E3D", "#6E6760"};  // 紧急(砖红) · 重要(琥珀金) · 普通(暖灰)
     for (int i = 0; i < m_priorityButtons.size(); ++i) {
         auto *btn = m_priorityButtons[i];
         bool active = (prios[i] == m_selectedPriority);

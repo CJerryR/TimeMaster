@@ -220,7 +220,7 @@ void AiHistoryDialog::applyTheme() {
         }
         QListWidget#BatchList::item:hover { background-color: %6; }
         QListWidget#BatchList::item:selected {
-            background-color: rgba(239,68,68,0.12);
+            background-color: rgba(217,119,87,0.14);
             color: %7;
         }
         QListWidget#EventList::item {
@@ -231,7 +231,7 @@ void AiHistoryDialog::applyTheme() {
         }
         QListWidget#EventList::item:hover { background-color: %6; }
         QListWidget#EventList::item:selected {
-            background-color: rgba(239,68,68,0.10);
+            background-color: rgba(217,119,87,0.11);
         }
 
         QTextBrowser#SourceTextView {
@@ -251,7 +251,7 @@ void AiHistoryDialog::applyTheme() {
             padding: 8px 18px;
             font-weight: 600;
         }
-        QPushButton#DangerBtn:hover { background-color: #b91c1c; }
+        QPushButton#DangerBtn:hover { background-color: #9A3530; }
         QPushButton#DangerBtn:disabled {
             background-color: %2;
             color: %3;
@@ -264,7 +264,7 @@ void AiHistoryDialog::applyTheme() {
             padding: 8px 14px;
         }
         QPushButton#DangerGhostBtn:hover {
-            background-color: rgba(220,38,38,0.08);
+            background-color: rgba(184,69,62,0.08);
             border-color: %8;
         }
         QPushButton#DangerGhostBtn:disabled {

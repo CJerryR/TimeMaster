@@ -8,15 +8,23 @@
 namespace timemaster {
 
 /**
- * 应用主题：light / dark
- * 单例，全局监听变更
+ * 设计语言：「Warm Paper · 暖纸感」
+ *  暖色调设计系统。
  *
- * 设计语言：「premium glass」
- *  - 主背景：柔和的对角线渐变（避免单调）
- *  - 卡片/容器：rgba 半透明覆盖，让底层渐变隐隐透出，营造层次感
- *  - 边框：低透明度（约 8%），细而不死
- *  - 圆角：12-14px（更现代）
- *  - 强调色：保留品牌红，但配以更细腻的灰阶
+ *  色彩定量规范
+ *  ─────────────────────────────────────
+ *  · 底色（浅色）：#F5F2ED   — 模拟自然纸张反射率，比纯白少约 15% 蓝光刺激
+ *  · 底色（深色）：#262521   — 暖调深棕黑，避免冷感
+ *  · 品牌色：    #D97757   — 中等饱和度橙褐，HSL(17°, 60%, 60%)
+ *  · 文字主色（浅）：#1D1C16 — 黑里带暖棕
+ *  · 文字主色（深）：#F0ECE0 — 暖白
+ *  · 描边：rgba(60,50,40,0.10) — 极低对比纸纹质感
+ *
+ *  几何
+ *  ─────────────────────────────────────
+ *  · 8pt 网格基数
+ *  · 大容器圆角：16-24px
+ *  · 小组件圆角：8px
  */
 class Theme : public QObject {
     Q_OBJECT
@@ -29,11 +37,11 @@ public:
     void setMode(Mode m);
     void toggle();
 
-    // ---- 不透明色（用于绘制） ----
-    QColor bgPage() const;            // 整体页面纯色回退
-    QColor bgPageTop() const;         // 渐变起点（左上）
-    QColor bgPageBottom() const;      // 渐变终点（右下）
-    QColor bgContainer() const;       // 卡片不透明色（用于绘制饼图等）
+    // ---- 不透明色 ----
+    QColor bgPage() const;
+    QColor bgPageTop() const;
+    QColor bgPageBottom() const;
+    QColor bgContainer() const;
     QColor bgComponent() const;
     QColor bgHover() const;
     QColor stroke() const;
@@ -42,26 +50,24 @@ public:
     QColor textPlaceholder() const;
     QColor brand() const;
     QColor brandLight() const;
-    QColor accent() const;            // 辅助强调（靛蓝）
+    QColor accent() const;
     QColor todayHighlight() const;
     QColor nowLine() const;
     QColor success() const;
     QColor danger() const;
 
-    // ---- 半透明色（QSS 用，rgba 字符串） ----
-    QString cardBgRgba() const;       // 卡片背景 rgba
+    // ---- 半透明色（QSS 用） ----
+    QString cardBgRgba() const;
     QString cardBgHoverRgba() const;
     QString sidebarBgRgba() const;
     QString componentBgRgba() const;
-    QString strokeRgba() const;       // 边框 rgba
-    QString shadowRgba() const;       // 用于伪阴影边框
+    QString strokeRgba() const;
+    QString shadowRgba() const;
 
-    // 页面背景渐变（QSS / QPalette 用）
     QString pageGradient() const;
 
     QHash<EventColor, ColorPalette> palette() const;
 
-    /// 全局基础样式：覆盖输入框/按钮等所有控件
     QString globalStylesheet() const;
 
 signals:

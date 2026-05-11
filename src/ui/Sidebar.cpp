@@ -128,7 +128,7 @@ void Sidebar::applyTheme() {
         }
         QLabel#LogoBox {
             background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                        stop:0 %3, stop:1 #f97316);
+                        stop:0 %3, stop:1 #B85A3D);
             color: white;
             border-radius: 11px;
             font-size: 19px;
@@ -161,7 +161,7 @@ void Sidebar::applyTheme() {
             color: %4;
         }
         QPushButton#SidebarNavBtn:checked {
-            background-color: rgba(239,68,68,0.10);
+            background-color: rgba(217,119,87,0.13);
             color: %3;
             font-weight: 600;
         }

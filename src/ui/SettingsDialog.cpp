@@ -198,7 +198,7 @@ void SettingsDialog::applyTheme() {
             padding: 8px 18px;
             font-weight: 600;
         }
-        QPushButton#PrimaryBtn:hover { background-color: #dc2626; }
+        QPushButton#PrimaryBtn:hover { background-color: #C26646; }
         QPushButton#SecondaryBtn {
             background-color: transparent;
             color: %2;

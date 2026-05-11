@@ -3,361 +3,374 @@
 namespace timemaster {
 
 Theme &Theme::instance() {
-    static Theme inst;
-    return inst;
+    static Theme t;
+    return t;
 }
 
-Theme::Theme(QObject *parent)
-    : QObject(parent),
-      m_settings("TimeMaster", "TimeMaster")
-{
-    QString saved = m_settings.value("theme", "light").toString();
-    m_mode = (saved == "dark") ? Dark : Light;
+Theme::Theme(QObject *parent) : QObject(parent) {
+    int saved = m_settings.value("theme_mode", int(Light)).toInt();
+    m_mode = (saved == Dark) ? Dark : Light;
 }
 
 void Theme::setMode(Mode m) {
     if (m == m_mode) return;
     m_mode = m;
-    m_settings.setValue("theme", m == Dark ? "dark" : "light");
+    m_settings.setValue("theme_mode", int(m));
     emit changed();
 }
 
-void Theme::toggle() {
-    setMode(m_mode == Light ? Dark : Light);
-}
+void Theme::toggle() { setMode(m_mode == Light ? Dark : Light); }
 
-// ---- 不透明色：用于 QPainter 绘制 ----
+// ============== 不透明色 ==============
 
 QColor Theme::bgPage() const {
-    return m_mode == Light ? QColor("#f4f5fa") : QColor("#0f1014");
+    // 浅色：自然纸张白（#F5F2ED），少约 15% 蓝光
+    // 深色：暖调棕黑（#262521），不发青
+    return m_mode == Light ? QColor("#F5F2ED") : QColor("#262521");
 }
 
 QColor Theme::bgPageTop() const {
-    return m_mode == Light ? QColor("#f8f9fd") : QColor("#13141a");
+    // 渐变左上：略亮于底色，模拟左上散射光
+    return m_mode == Light ? QColor("#F8F5F0") : QColor("#2C2B26");
 }
 
 QColor Theme::bgPageBottom() const {
-    return m_mode == Light ? QColor("#eceef5") : QColor("#0a0b0f");
+    // 渐变右下：略暗，纸张的自然落影
+    return m_mode == Light ? QColor("#EEEAE2") : QColor("#1F1E1B");
 }
 
 QColor Theme::bgContainer() const {
-    return m_mode == Light ? QColor("#ffffff") : QColor("#1c1d23");
+    // 卡片不透明色，用于饼图等需要纯色填充的场景
+    return m_mode == Light ? QColor("#FBF9F5") : QColor("#2E2D28");
 }
 
 QColor Theme::bgComponent() const {
-    return m_mode == Light ? QColor("#f5f5f7") : QColor("#26272d");
+    return m_mode == Light ? QColor("#F0EDE6") : QColor("#33312B");
 }
 
 QColor Theme::bgHover() const {
-    return m_mode == Light ? QColor("#eeeff3") : QColor("#2d2e35");
+    return m_mode == Light ? QColor("#EDE8DF") : QColor("#36342E");
 }
 
 QColor Theme::stroke() const {
-    return m_mode == Light ? QColor("#e4e5ea") : QColor("#33343c");
+    // 实色描边（用于绘制非 QSS 部分，如日历网格线）
+    return m_mode == Light ? QColor(60, 50, 40, 28) : QColor(240, 230, 210, 30);
 }
 
 QColor Theme::textPrimary() const {
-    return m_mode == Light ? QColor("#18181b") : QColor("#f4f4f5");
+    // #1D1C16 — 黑里带暖棕调
+    return m_mode == Light ? QColor("#1D1C16") : QColor("#F0ECE0");
 }
 
 QColor Theme::textSecondary() const {
-    return m_mode == Light ? QColor("#52525b") : QColor("#a1a1aa");
+    return m_mode == Light ? QColor("#6B645A") : QColor("#B5AEA3");
 }
 
 QColor Theme::textPlaceholder() const {
-    return m_mode == Light ? QColor("#a1a1aa") : QColor("#71717a");
+    return m_mode == Light ? QColor("#A39B8E") : QColor("#7A736A");
 }
 
 QColor Theme::brand() const {
-    return QColor("#ef4444");
+    // #D97757 — 暖橙褐色调
+    // 深色模式略微提亮以保对比
+    return m_mode == Light ? QColor("#D97757") : QColor("#E08A6E");
 }
 
 QColor Theme::brandLight() const {
-    QColor c = brand();
-    c.setAlphaF(0.12);
-    return c;
+    return m_mode == Light ? QColor("#F4DDD0") : QColor("#4A3328");
 }
 
 QColor Theme::accent() const {
-    return m_mode == Light ? QColor("#4f46e5") : QColor("#818cf8");
+    // 茶绿，与橙互补，用于"日历附带"等次级强调
+    return m_mode == Light ? QColor("#6F8B7E") : QColor("#8FA59A");
 }
 
 QColor Theme::todayHighlight() const {
-    return m_mode == Light ? QColor("#fff1f1") : QColor("#3a1818");
+    return m_mode == Light ? QColor(217, 119, 87, 22) : QColor(224, 138, 110, 28);
 }
 
 QColor Theme::nowLine() const {
-    return QColor("#ef4444");
+    return brand();
 }
 
 QColor Theme::success() const {
-    return QColor("#16a34a");
+    return m_mode == Light ? QColor("#6B7F47") : QColor("#92A66B");
 }
 
 QColor Theme::danger() const {
-    return QColor("#dc2626");
+    // 暖砖红，不用纯红
+    return m_mode == Light ? QColor("#B8453E") : QColor("#D26C66");
 }
 
-// ---- 半透明色：rgba 字符串供 QSS ----
+// ============== 半透明 rgba 字符串 ==============
 
 QString Theme::cardBgRgba() const {
-    // 亮色：白色 75% alpha; 暗色：深灰 65% alpha (让渐变透出来)
+    // 卡片：纸张白半透明叠加底层渐变
     return m_mode == Light
-        ? "rgba(255,255,255,0.72)"
-        : "rgba(32,33,40,0.62)";
+        ? QStringLiteral("rgba(252, 250, 245, 0.78)")
+        : QStringLiteral("rgba(50, 48, 42, 0.72)");
 }
 
 QString Theme::cardBgHoverRgba() const {
     return m_mode == Light
-        ? "rgba(255,255,255,0.88)"
-        : "rgba(46,47,55,0.75)";
+        ? QStringLiteral("rgba(245, 240, 232, 0.92)")
+        : QStringLiteral("rgba(62, 59, 52, 0.88)");
 }
 
 QString Theme::sidebarBgRgba() const {
     return m_mode == Light
-        ? "rgba(255,255,255,0.55)"
-        : "rgba(22,23,28,0.65)";
+        ? QStringLiteral("rgba(248, 244, 237, 0.62)")
+        : QStringLiteral("rgba(38, 36, 32, 0.62)");
 }
 
 QString Theme::componentBgRgba() const {
     return m_mode == Light
-        ? "rgba(245,246,250,0.85)"
-        : "rgba(38,39,46,0.7)";
+        ? QStringLiteral("rgba(240, 235, 226, 0.55)")
+        : QStringLiteral("rgba(46, 43, 38, 0.55)");
 }
 
 QString Theme::strokeRgba() const {
+    // 暖调极低对比描边
     return m_mode == Light
-        ? "rgba(0,0,0,0.06)"
-        : "rgba(255,255,255,0.08)";
+        ? QStringLiteral("rgba(60, 50, 40, 0.10)")
+        : QStringLiteral("rgba(240, 230, 210, 0.10)");
 }
 
 QString Theme::shadowRgba() const {
     return m_mode == Light
-        ? "rgba(0,0,0,0.04)"
-        : "rgba(0,0,0,0.35)";
+        ? QStringLiteral("rgba(60, 45, 30, 0.04)")
+        : QStringLiteral("rgba(0, 0, 0, 0.20)");
 }
 
 QString Theme::pageGradient() const {
     QString top = bgPageTop().name();
     QString bot = bgPageBottom().name();
-    return QString("qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 %1, stop:1 %2)")
-        .arg(top, bot);
+    return QString("qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+                   "stop:0 %1, stop:1 %2)").arg(top, bot);
 }
 
 QHash<EventColor, ColorPalette> Theme::palette() const {
-    return m_mode == Light ? eventColorsLight() : eventColorsDark();
+    // 事件颜色保持多样（用户自选），但调暖了一档以呼应整体氛围
+    QHash<EventColor, ColorPalette> p;
+    if (m_mode == Light) {
+        p[EventColor::Red]    = {QColor("#FDE3DC"), QColor("#B8453E"), QColor("#E8A89F"), "砖红"};
+        p[EventColor::Orange] = {QColor("#FBE3D0"), QColor("#C2702E"), QColor("#E8B383"), "琥珀"};
+        p[EventColor::Yellow] = {QColor("#FAEBC9"), QColor("#9E7A1F"), QColor("#DCC078"), "麦黄"};
+        p[EventColor::Green]  = {QColor("#DDE7D3"), QColor("#5C7140"), QColor("#A8BC8E"), "茶绿"};
+        p[EventColor::Teal]   = {QColor("#D4E3DE"), QColor("#3F6E60"), QColor("#8DB3A6"), "湖青"};
+        p[EventColor::Blue]   = {QColor("#D8E2EC"), QColor("#3D5F7E"), QColor("#90A7BF"), "墨蓝"};
+        p[EventColor::Indigo] = {QColor("#DBD9EA"), QColor("#504878"), QColor("#A39CC2"), "暮霭"};
+        p[EventColor::Purple] = {QColor("#E5D8E3"), QColor("#6B4368"), QColor("#B59AB0"), "紫檀"};
+        p[EventColor::Pink]   = {QColor("#F0DAD9"), QColor("#9B4D4F"), QColor("#D2A2A2"), "霞粉"};
+    } else {
+        p[EventColor::Red]    = {QColor(184, 69, 62, 38),    QColor("#E29089"), QColor("#7A3530"), "砖红"};
+        p[EventColor::Orange] = {QColor(194, 112, 46, 38),   QColor("#E8B074"), QColor("#7A4A1F"), "琥珀"};
+        p[EventColor::Yellow] = {QColor(158, 122, 31, 38),   QColor("#D4B66B"), QColor("#6E5A20"), "麦黄"};
+        p[EventColor::Green]  = {QColor(92, 113, 64, 38),    QColor("#A6BC85"), QColor("#465A33"), "茶绿"};
+        p[EventColor::Teal]   = {QColor(63, 110, 96, 38),    QColor("#8FB5A7"), QColor("#2E5749"), "湖青"};
+        p[EventColor::Blue]   = {QColor(61, 95, 126, 38),    QColor("#9AB1C8"), QColor("#2D4A66"), "墨蓝"};
+        p[EventColor::Indigo] = {QColor(80, 72, 133, 38),    QColor("#A8A3C8"), QColor("#3D375E"), "暮霭"};
+        p[EventColor::Purple] = {QColor(107, 67, 104, 38),   QColor("#BB9DB7"), QColor("#523350"), "紫檀"};
+        p[EventColor::Pink]   = {QColor(155, 77, 79, 38),    QColor("#D5A8A8"), QColor("#7A3A3C"), "霞粉"};
+    }
+    return p;
 }
 
-QString Theme::globalStylesheet() const {
-    QString text = textPrimary().name();
-    QString text2 = textSecondary().name();
-    QString placeholder = textPlaceholder().name();
-    QString brandC = brand().name();
-    QString accentC = accent().name();
-    QString strokeC = stroke().name();
-    QString strokeRgbaC = strokeRgba();
-    QString componentRgba = componentBgRgba();
-    QString cardRgba = cardBgRgba();
-    QString hoverRgba = cardBgHoverRgba();
-    QString container = bgContainer().name();
-    QString page = bgPage().name();
+// ============== 全局 QSS ==============
 
-    // 注意：Qt QSS 中要让 rgba 生效，背景色必须给 widget；
-    // QWidget 默认透明传递，所以我们对 QFrame/QDialog 单独指定。
+QString Theme::globalStylesheet() const {
+    QString brand = this->brand().name();
+    QString brandHover = m_mode == Light ? "#C26646" : "#D97757";
+    QString textPrim = textPrimary().name();
+    QString textSec = textSecondary().name();
+    QString placeholder = textPlaceholder().name();
+    QString stroke = strokeRgba();
+    QString cardBg = cardBgRgba();
+    QString cardHover = cardBgHoverRgba();
+    QString componentBg = componentBgRgba();
+    QString bgContainer = this->bgContainer().name();
+    QString hoverBg = bgHover().name();
+
+    // 基准：所有按钮/输入框 8px 圆角，符合 8pt 网格
     return QString(R"(
-        /* === 全局字体与基础文字 === */
+        /* ============ 基础类型 ============ */
         QWidget {
             color: %1;
-            font-family: "Segoe UI", -apple-system, "SF Pro Display", "PingFang SC",
-                         "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
-            font-size: 13px;
+            font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
         }
-
-        /* === 卡片容器（半透明，让页面渐变透出） === */
-        QFrame#cardFrame,
-        QFrame#dialogContent {
-            background-color: %4;
-            border: 1px solid %6;
-            border-radius: 14px;
-        }
-
-        /* === 普通按钮 === */
-        QPushButton {
-            background-color: %5;
-            border: 1px solid %6;
-            border-radius: 9px;
-            padding: 7px 16px;
-            color: %1;
-        }
-        QPushButton:hover {
-            background-color: %7;
-            border-color: %8;
-        }
-        QPushButton:pressed {
-            background-color: %8;
-        }
-        QPushButton:disabled {
-            color: %3;
-            background-color: %5;
-        }
-
-        /* === 主按钮 === */
-        QPushButton[class="primary"] {
-            background-color: %9;
-            color: white;
-            border: none;
-            font-weight: 600;
-            padding: 7px 18px;
-        }
-        QPushButton[class="primary"]:hover {
-            background-color: #dc2626;
-        }
-        QPushButton[class="primary"]:disabled {
-            background-color: %5;
-            color: %3;
-        }
-
-        /* === ghost 按钮 === */
-        QPushButton[class="ghost"] {
-            background-color: transparent;
-            border: none;
-            color: %2;
-            padding: 6px 12px;
-        }
-        QPushButton[class="ghost"]:hover {
-            background-color: %7;
-            color: %1;
-        }
-
-        /* === 输入框 === */
-        QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QDateTimeEdit, QSpinBox {
-            background-color: %5;
-            border: 1px solid %6;
-            border-radius: 9px;
-            padding: 6px 11px;
-            color: %1;
-            selection-background-color: %9;
-            selection-color: white;
-        }
-        QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus,
-        QDateTimeEdit:focus, QSpinBox:focus {
-            border: 1px solid %9;
-        }
-        QComboBox::drop-down {
-            border: none;
-            width: 24px;
-        }
-        QComboBox::down-arrow {
-            image: none;
-            border-left: 4px solid transparent;
-            border-right: 4px solid transparent;
-            border-top: 5px solid %2;
-            margin-right: 8px;
-        }
-        QComboBox QAbstractItemView {
-            background-color: %10;
-            border: 1px solid %6;
-            border-radius: 8px;
-            padding: 4px;
-            color: %1;
-            selection-background-color: rgba(239,68,68,0.12);
-            selection-color: %9;
-            outline: 0;
-        }
-
-        /* === 滚动条 === */
-        QScrollBar:vertical {
-            background-color: transparent;
-            width: 10px;
-            margin: 4px 2px 4px 0;
-        }
-        QScrollBar::handle:vertical {
-            background-color: %6;
-            border-radius: 4px;
-            min-height: 30px;
-        }
-        QScrollBar::handle:vertical:hover {
-            background-color: %3;
-        }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
-        QScrollBar:horizontal {
-            background-color: transparent;
-            height: 10px;
-            margin: 0 4px 2px 4px;
-        }
-        QScrollBar::handle:horizontal {
-            background-color: %6;
-            border-radius: 4px;
-            min-width: 30px;
-        }
-        QScrollBar::handle:horizontal:hover { background-color: %3; }
-        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
-
-        /* === Tooltip === */
-        QToolTip {
-            background-color: %10;
-            color: %1;
-            border: 1px solid %6;
-            border-radius: 6px;
-            padding: 5px 9px;
-        }
-
-        /* === 标题文本 === */
+        QLabel { background: transparent; color: %1; }
         QLabel[class="title"] {
             font-size: 19px;
             font-weight: 700;
             color: %1;
-            background-color: transparent;
+            letter-spacing: 0.2px;
         }
         QLabel[class="subtitle"] {
             font-size: 14px;
             font-weight: 600;
             color: %1;
-            background-color: transparent;
+            letter-spacing: 0.2px;
         }
         QLabel[class="caption"] {
-            font-size: 11px;
             color: %2;
-            background-color: transparent;
-            margin-bottom: 4px;
+            font-size: 12px;
         }
-        QLabel { background-color: transparent; }
 
-        /* === 对话框 === */
-        QDialog {
+        /* ============ 输入控件 ============ */
+        QLineEdit, QPlainTextEdit, QTextEdit,
+        QDateTimeEdit, QSpinBox, QComboBox {
+            background-color: %4;
+            color: %1;
+            border: 1px solid %3;
+            border-radius: 8px;
+            padding: 6px 10px;
+            selection-background-color: rgba(217, 119, 87, 0.22);
+            selection-color: %1;
+        }
+        QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus,
+        QDateTimeEdit:focus, QSpinBox:focus, QComboBox:focus {
+            border: 1px solid %5;
+        }
+        QLineEdit::placeholder, QPlainTextEdit::placeholder {
+            color: %6;
+        }
+        QComboBox::drop-down {
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 22px;
+            border: none;
+        }
+        QComboBox QAbstractItemView {
+            background-color: %7;
+            color: %1;
+            border: 1px solid %3;
+            border-radius: 8px;
+            padding: 4px;
+            selection-background-color: %8;
+            selection-color: %1;
+            outline: 0;
+        }
+
+        /* ============ 按钮 ============ */
+        QPushButton {
+            background-color: %4;
+            color: %1;
+            border: 1px solid %3;
+            border-radius: 8px;
+            padding: 6px 14px;
+        }
+        QPushButton:hover { background-color: %9; }
+        QPushButton:disabled {
+            color: %6;
+            border-color: %3;
+        }
+        QPushButton[class="primary"] {
+            background-color: %5;
+            color: white;
+            border: none;
+            font-weight: 600;
+            padding: 6px 18px;
+        }
+        QPushButton[class="primary"]:hover {
             background-color: %10;
         }
-
-        QCheckBox, QRadioButton {
-            color: %1;
+        QPushButton[class="primary"]:disabled {
+            background-color: %4;
+            color: %6;
+        }
+        QPushButton[class="ghost"] {
             background-color: transparent;
-            spacing: 8px;
+            color: %2;
+            border: 1px solid %3;
         }
-        QCheckBox::indicator, QRadioButton::indicator {
-            width: 16px; height: 16px;
-        }
-        QCheckBox::indicator:unchecked {
-            border: 1.5px solid %6;
-            border-radius: 4px;
-            background-color: %5;
-        }
-        QCheckBox::indicator:checked {
-            border: 1.5px solid %9;
-            border-radius: 4px;
+        QPushButton[class="ghost"]:hover {
             background-color: %9;
+            color: %1;
+        }
+
+        /* ============ 滚动条 ============ */
+        QScrollBar:vertical {
+            background: transparent;
+            width: 10px;
+            margin: 4px 2px 4px 2px;
+        }
+        QScrollBar::handle:vertical {
+            background: %3;
+            min-height: 32px;
+            border-radius: 4px;
+        }
+        QScrollBar::handle:vertical:hover { background: %2; }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+
+        QScrollBar:horizontal {
+            background: transparent;
+            height: 10px;
+            margin: 2px 4px;
+        }
+        QScrollBar::handle:horizontal {
+            background: %3;
+            min-width: 32px;
+            border-radius: 4px;
+        }
+        QScrollBar::handle:horizontal:hover { background: %2; }
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: transparent; }
+
+        /* ============ Group / Tooltip ============ */
+        QToolTip {
+            background-color: %7;
+            color: %1;
+            border: 1px solid %3;
+            border-radius: 8px;
+            padding: 6px 10px;
+        }
+
+        /* ============ 复选框 ============ */
+        QCheckBox { color: %1; spacing: 8px; }
+        QCheckBox::indicator {
+            width: 16px;
+            height: 16px;
+            border: 1px solid %3;
+            border-radius: 4px;
+            background: %4;
+        }
+        QCheckBox::indicator:hover { border-color: %2; }
+        QCheckBox::indicator:checked {
+            background: %5;
+            border-color: %5;
+            image: none;
+        }
+
+        /* ============ 日历弹窗（QDateTimeEdit popup） ============ */
+        QCalendarWidget QToolButton {
+            background: transparent;
+            color: %1;
+            border: none;
+            padding: 4px 8px;
+        }
+        QCalendarWidget QToolButton:hover { background: %9; border-radius: 6px; }
+        QCalendarWidget QMenu { background: %7; color: %1; }
+        QCalendarWidget QAbstractItemView:enabled {
+            background: %7;
+            color: %1;
+            selection-background-color: %5;
+            selection-color: white;
+        }
+        QCalendarWidget QWidget#qt_calendar_navigationbar {
+            background: %7;
         }
     )")
-    /*1*/.arg(text)
-    /*2*/.arg(text2)
-    /*3*/.arg(placeholder)
-    /*4*/.arg(cardRgba)
-    /*5*/.arg(componentRgba)
-    /*6*/.arg(strokeRgbaC)
-    /*7*/.arg(hoverRgba)
-    /*8*/.arg(strokeC)
-    /*9*/.arg(brandC)
-    /*10*/.arg(container);
+    /*1*/.arg(textPrim)
+    /*2*/.arg(textSec)
+    /*3*/.arg(stroke)
+    /*4*/.arg(componentBg)
+    /*5*/.arg(brand)
+    /*6*/.arg(placeholder)
+    /*7*/.arg(bgContainer)
+    /*8*/.arg(hoverBg)
+    /*9*/.arg(cardHover)
+    /*10*/.arg(brandHover);
 }
 
 } // namespace timemaster
