@@ -384,13 +384,13 @@ void CalendarPage::refresh() {
     switch (m_view) {
         case CalendarView::Month: {
             QDate first(m_currentDate.year(), m_currentDate.month(), 1);
-            int dow = first.dayOfWeek() % 7;
+            int dow = first.dayOfWeek() - 1;  // 周一起算
             gridStart = first.addDays(-dow);
             gridEnd = gridStart.addDays(42);
             break;
         }
         case CalendarView::Week: {
-            int dow = m_currentDate.dayOfWeek() % 7;
+            int dow = m_currentDate.dayOfWeek() - 1;  // 周一起算
             gridStart = m_currentDate.addDays(-dow);
             gridEnd = gridStart.addDays(7);
             break;
@@ -426,7 +426,7 @@ void CalendarPage::updateHeader() {
             title = QString("%1 年 %2 月").arg(y).arg(mo);
             break;
         case CalendarView::Week: {
-            int dow = m_currentDate.dayOfWeek() % 7;
+            int dow = m_currentDate.dayOfWeek() - 1;  // 周一起算
             QDate ws = m_currentDate.addDays(-dow);
             QDate we = ws.addDays(6);
             if (ws.month() == we.month()) {

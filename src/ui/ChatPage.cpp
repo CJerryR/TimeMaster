@@ -53,21 +53,14 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     topLayout->setContentsMargins(18, 12, 18, 12);
     topLayout->setSpacing(12);
 
-    auto *titleIcon = new QLabel;
-    titleIcon->setObjectName("ChatPageTitleIcon");
-    titleIcon->setFixedSize(22, 22);
-    m_titleIcon = titleIcon;
-    titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavChat, Theme::instance().brand(), 22));
-
-    auto *titleRow = new QHBoxLayout;
-    titleRow->setContentsMargins(0, 0, 0, 0);
-    titleRow->setSpacing(8);
+    // 唯一的标题图标 —— 不要再创建第二份
     m_titleIcon = new QLabel;
+    m_titleIcon->setObjectName("ChatPageTitleIcon");
     m_titleIcon->setFixedSize(22, 22);
-    titleRow->addWidget(m_titleIcon);
+    m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavChat, Theme::instance().brand(), 22));
+
     auto *title = new QLabel("AI 对话");
     title->setObjectName("ChatPageTitle");
-    titleRow->addWidget(title);
 
     m_useCtxCheck = new QCheckBox("让 AI 看到我的日历");
     m_useCtxCheck->setObjectName("CtxCheck");
@@ -83,8 +76,8 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     m_clearBtn->setCursor(Qt::PointingHandCursor);
     connect(m_clearBtn, &QPushButton::clicked, this, &ChatPage::onClear);
 
-    topLayout->addWidget(titleIcon);
-    topLayout->addLayout(titleRow);
+    topLayout->addWidget(m_titleIcon);
+    topLayout->addWidget(title);
     topLayout->addStretch();
     topLayout->addWidget(m_ctxStatus);
     topLayout->addWidget(m_useCtxCheck);
@@ -288,6 +281,7 @@ void ChatPage::onChatError(const QString &msg) {
 }
 
 void ChatPage::onClear() {
+    m_bubbles.clear();
     while (m_msgLayout->count() > 0) {
         auto *item = m_msgLayout->takeAt(0);
         if (item->widget()) item->widget()->deleteLater();
@@ -334,10 +328,15 @@ QLabel *ChatPage::appendBubble(const QString &text, bool isUser, bool isStreamin
 
     auto *bubble = new QLabel;
     bubble->setWordWrap(true);
-    bubble->setMaximumWidth(720);
     bubble->setTextInteractionFlags(Qt::TextSelectableByMouse);
     bubble->setObjectName(isUser ? "ChatBubbleUser" : "ChatBubbleAI");
     bindMessageText(bubble, text, isUser);
+
+    // 跟踪并按当前视口宽度设置 maxWidth
+    m_bubbles.append(bubble);
+    connect(bubble, &QObject::destroyed, this, [this, bubble]() {
+        m_bubbles.removeAll(bubble);
+    });
 
     if (isUser) {
         rowLayout->addStretch();
@@ -350,6 +349,7 @@ QLabel *ChatPage::appendBubble(const QString &text, bool isUser, bool isStreamin
     m_msgLayout->addWidget(row);
     m_msgLayout->addStretch();
 
+    updateBubblesMaxWidth();
     QTimer::singleShot(0, this, &ChatPage::scrollToBottom);
     return bubble;
 }
@@ -357,6 +357,24 @@ QLabel *ChatPage::appendBubble(const QString &text, bool isUser, bool isStreamin
 void ChatPage::scrollToBottom() {
     auto *bar = m_scroll->verticalScrollBar();
     bar->setValue(bar->maximum());
+}
+
+void ChatPage::resizeEvent(QResizeEvent *e) {
+    QWidget::resizeEvent(e);
+    updateBubblesMaxWidth();
+}
+
+void ChatPage::updateBubblesMaxWidth() {
+    if (!m_scroll) return;
+    int vw = m_scroll->viewport()->width();
+    // 减去容器左右内边距 (38*2 = 76)，再保留一点和滚动条 / 对侧 stretch 的余量
+    int maxW = qMax(240, vw - 76 - 8);
+    // 在大窗口上也不要让单个气泡占满整行，留一点呼吸空间
+    int cap = int(vw * 0.92);
+    if (cap > 0 && maxW > cap) maxW = cap;
+    for (QLabel *b : m_bubbles) {
+        if (b) b->setMaximumWidth(maxW);
+    }
 }
 
 void ChatPage::applyTheme() {
@@ -396,11 +414,13 @@ void ChatPage::applyTheme() {
             width: 16px; height: 16px;
         }
         QLabel#CtxStatus {
-            color: %4;
+            color: %7;
             font-size: 12px;
-            padding: 4px 10px;
-            background-color: rgba(217,119,87,0.10);
-            border-radius: 8px;
+            font-weight: 600;
+            padding: 4px 12px;
+            background-color: rgba(217,119,87,0.16);
+            border: 1px solid rgba(217,119,87,0.32);
+            border-radius: 10px;
         }
         QPushButton#ChatGhostBtn {
             background-color: transparent;

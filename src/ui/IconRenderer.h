@@ -50,12 +50,15 @@ public:
         AppIcon09_TimeSeal,
     };
 
-    // 单色图标（前景色按主题）
+    // 单色图标（前景色按主题）—— 自动按 devicePixelRatio 放大，矢量级清晰
     static QIcon icon(Icon which, const QColor &fg, int px = 24);
     static QPixmap pixmap(Icon which, const QColor &fg, int px = 24);
 
-    // App 主图标（多色，不跟主题变色），用于左上角 logo / 任务栏
+    // App 主图标（多色，不跟主题变色），用于左上角 logo 显示（DPI 感知）
     static QPixmap appIcon(Icon which, int px = 256);
+
+    // App 主图标的原生分辨率版本，给 QApplication::setWindowIcon 喂多档位图用
+    static QPixmap appIconRaw(Icon which, int px = 256);
 
     // 当前默认 App 图标编号（用户挑选后改这里即可）
     static Icon defaultAppIcon();

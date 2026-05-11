@@ -26,31 +26,31 @@ void Theme::toggle() { setMode(m_mode == Light ? Dark : Light); }
 
 QColor Theme::bgPage() const {
     // 浅色：自然纸张白（#F5F2ED），少约 15% 蓝光
-    // 深色：暖调棕黑（#262521），不发青
-    return m_mode == Light ? QColor("#F5F2ED") : QColor("#262521");
+    // 深色：用户指定 rgb(31,31,30) = #1F1F1E（接近纯黑的暖中性色）
+    return m_mode == Light ? QColor("#F5F2ED") : QColor(31, 31, 30);
 }
 
 QColor Theme::bgPageTop() const {
-    // 渐变左上：略亮于底色，模拟左上散射光
-    return m_mode == Light ? QColor("#F8F5F0") : QColor("#2C2B26");
+    // 渐变左上：略亮于底色
+    return m_mode == Light ? QColor("#F8F5F0") : QColor(33, 33, 32);
 }
 
 QColor Theme::bgPageBottom() const {
-    // 渐变右下：略暗，纸张的自然落影
-    return m_mode == Light ? QColor("#EEEAE2") : QColor("#1F1E1B");
+    // 渐变右下：略暗
+    return m_mode == Light ? QColor("#EEEAE2") : QColor(28, 28, 27);
 }
 
 QColor Theme::bgContainer() const {
-    // 卡片不透明色，用于饼图等需要纯色填充的场景
-    return m_mode == Light ? QColor("#FBF9F5") : QColor("#2E2D28");
+    // 卡片不透明色（比页面背景稍亮一档，形成层级）
+    return m_mode == Light ? QColor("#FBF9F5") : QColor(39, 38, 37);
 }
 
 QColor Theme::bgComponent() const {
-    return m_mode == Light ? QColor("#F0EDE6") : QColor("#33312B");
+    return m_mode == Light ? QColor("#F0EDE6") : QColor(43, 42, 40);
 }
 
 QColor Theme::bgHover() const {
-    return m_mode == Light ? QColor("#EDE8DF") : QColor("#36342E");
+    return m_mode == Light ? QColor("#EDE8DF") : QColor(48, 47, 45);
 }
 
 QColor Theme::stroke() const {
@@ -59,16 +59,19 @@ QColor Theme::stroke() const {
 }
 
 QColor Theme::textPrimary() const {
-    // #1D1C16 — 黑里带暖棕调
-    return m_mode == Light ? QColor("#1D1C16") : QColor("#F0ECE0");
+    // 浅色：#1D1C16 — 黑里带暖棕调
+    // 深色：rgb(247,247,245) = #F7F7F5
+    return m_mode == Light ? QColor("#1D1C16") : QColor(247, 247, 245);
 }
 
 QColor Theme::textSecondary() const {
-    return m_mode == Light ? QColor("#6B645A") : QColor("#B5AEA3");
+    // 浅色：暖灰；深色：rgb(194,182,182) = #C2B6B6（标注/次重点色）
+    return m_mode == Light ? QColor("#6B645A") : QColor(194, 182, 182);
 }
 
 QColor Theme::textPlaceholder() const {
-    return m_mode == Light ? QColor("#A39B8E") : QColor("#7A736A");
+    // 浅色：低对比；深色：rgb(146,148,138) = #92948A
+    return m_mode == Light ? QColor("#A39B8E") : QColor(146, 148, 138);
 }
 
 QColor Theme::brand() const {
@@ -106,28 +109,29 @@ QColor Theme::danger() const {
 // ============== 半透明 rgba 字符串 ==============
 
 QString Theme::cardBgRgba() const {
-    // 卡片：纸张白半透明叠加底层渐变
+    // 卡片：浅色纸张白半透明；深色比页面稍亮的卡片
     return m_mode == Light
         ? QStringLiteral("rgba(252, 250, 245, 0.78)")
-        : QStringLiteral("rgba(50, 48, 42, 0.72)");
+        : QStringLiteral("rgba(39, 38, 37, 0.88)");
 }
 
 QString Theme::cardBgHoverRgba() const {
     return m_mode == Light
         ? QStringLiteral("rgba(245, 240, 232, 0.92)")
-        : QStringLiteral("rgba(62, 59, 52, 0.88)");
+        : QStringLiteral("rgba(48, 47, 45, 0.94)");
 }
 
 QString Theme::sidebarBgRgba() const {
+    // 用户指定深色侧栏 rgb(30,30,29) = #1E1E1D，几乎不透明
     return m_mode == Light
         ? QStringLiteral("rgba(248, 244, 237, 0.62)")
-        : QStringLiteral("rgba(38, 36, 32, 0.62)");
+        : QStringLiteral("rgba(30, 30, 29, 0.96)");
 }
 
 QString Theme::componentBgRgba() const {
     return m_mode == Light
         ? QStringLiteral("rgba(240, 235, 226, 0.55)")
-        : QStringLiteral("rgba(46, 43, 38, 0.55)");
+        : QStringLiteral("rgba(43, 42, 40, 0.72)");
 }
 
 QString Theme::strokeRgba() const {

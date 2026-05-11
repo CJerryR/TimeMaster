@@ -1,5 +1,6 @@
 #include "IconRenderer.h"
 
+#include <QApplication>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPolygonF>
@@ -90,28 +91,41 @@ void drawIcon(QPainter &p, IconRenderer::Icon which, const QColor &fg, int px) {
             p.drawEllipse(QPointF(12 * s, 12 * s), 2.2 * s, 2.2 * s);
             break;
         }
-        // ============ 月亮 ============
+        // ============ 月亮（清晰的弦月：两圆相减） ============
         case IconRenderer::ThemeMoon: {
-            setStroke(1.6 * s);
-            QPainterPath crescent;
-            crescent.moveTo(QPointF(18 * s, 14.5 * s));
-            crescent.arcTo(QRectF(3.5 * s, 3.5 * s, 17 * s, 17 * s), 90, -180);
-            crescent.arcTo(QRectF(7 * s, 2.5 * s, 14 * s, 14 * s), -90, 180);
-            crescent.closeSubpath();
-            setFill();
+            // 用两个圆做布尔差，得到一个干净的弦月轮廓
+            QPainterPath full;
+            full.addEllipse(QPointF(12 * s, 12 * s), 8.5 * s, 8.5 * s);
+            QPainterPath shadow;
+            // 阴影圆向右上偏移，留下指向左下的弦月
+            shadow.addEllipse(QPointF(15.5 * s, 9.5 * s), 8.2 * s, 8.2 * s);
+            QPainterPath crescent = full.subtracted(shadow);
+
+            p.setPen(Qt::NoPen);
+            p.setBrush(fg);
             p.drawPath(crescent);
+
+            // 加两颗小星点缀，让"夜晚"的语义更明确
+            p.drawEllipse(QPointF(19.2 * s, 5.5 * s), 0.9 * s, 0.9 * s);
+            p.drawEllipse(QPointF(20.5 * s, 9 * s),   0.6 * s, 0.6 * s);
             break;
         }
-        // ============ 太阳 ============
+        // ============ 太阳（中心圆 + 8 道圆头光线） ============
         case IconRenderer::ThemeSun: {
-            setStroke(1.7 * s);
-            // 中心圆
+            // 实心中心圆
+            p.setPen(Qt::NoPen);
+            p.setBrush(fg);
             p.drawEllipse(QPointF(12 * s, 12 * s), 4 * s, 4 * s);
-            // 8 根光线
+
+            // 8 道光线（圆头粗线）
+            QPen ray(fg);
+            ray.setWidthF(1.9 * s);
+            ray.setCapStyle(Qt::RoundCap);
+            p.setPen(ray);
             p.save();
             p.translate(12 * s, 12 * s);
             for (int i = 0; i < 8; ++i) {
-                p.drawLine(QPointF(0, -7.5 * s), QPointF(0, -10 * s));
+                p.drawLine(QPointF(0, -7.3 * s), QPointF(0, -10 * s));
                 p.rotate(45);
             }
             p.restore();
@@ -436,9 +450,15 @@ void drawAppIcon(QPainter &p, IconRenderer::Icon which, int px) {
 } // anonymous namespace
 
 QPixmap IconRenderer::pixmap(Icon which, const QColor &fg, int px) {
-    QPixmap pm(px, px);
+    // ★ 关键：按设备像素比放大底图，得到真矢量级清晰度
+    qreal dpr = qApp ? qApp->devicePixelRatio() : 1.0;
+    QPixmap pm(int(px * dpr), int(px * dpr));
+    pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
     QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    // 在逻辑坐标系里绘制：QPainter 会自动按 DPR 放大到物理像素
     drawIcon(p, which, fg, px);
     p.end();
     return pm;
@@ -449,9 +469,25 @@ QIcon IconRenderer::icon(Icon which, const QColor &fg, int px) {
 }
 
 QPixmap IconRenderer::appIcon(Icon which, int px) {
+    qreal dpr = qApp ? qApp->devicePixelRatio() : 1.0;
+    QPixmap pm(int(px * dpr), int(px * dpr));
+    pm.setDevicePixelRatio(dpr);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    drawAppIcon(p, which, px);
+    p.end();
+    return pm;
+}
+
+QPixmap IconRenderer::appIconRaw(Icon which, int px) {
+    // 给 QApplication::setWindowIcon 用：每个像素尺寸都给一份原生分辨率的位图
     QPixmap pm(px, px);
     pm.fill(Qt::transparent);
     QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
     drawAppIcon(p, which, px);
     p.end();
     return pm;

@@ -47,7 +47,8 @@ void TimeGridView::scrollToHour(int hour) {
 QList<QDate> TimeGridView::visibleDays() const {
     if (m_mode == DayMode) return { m_currentDate };
     QList<QDate> days;
-    int dow = m_currentDate.dayOfWeek() % 7;
+    // 周一为每周起点
+    int dow = m_currentDate.dayOfWeek() - 1;  // Mon=0..Sun=6
     QDate start = m_currentDate.addDays(-dow);
     for (int i = 0; i < 7; ++i) days << start.addDays(i);
     return days;
@@ -338,13 +339,51 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         p.drawText(QRect(tr.left(), tr.top(), tr.width(), 18),
                    Qt::AlignLeft | Qt::AlignTop, title);
 
-        if (r.height() > 28 && !er.event.allDay) {
-            QFont f2 = font(); f2.setPointSize(9);
-            p.setFont(f2);
-            QString ts = er.event.startDate.toString("HH:mm")
-                       + " - " + er.event.endDate.toString("HH:mm");
-            p.drawText(QRect(tr.left(), tr.top() + 18, tr.width(), 16),
-                       Qt::AlignLeft | Qt::AlignTop, ts);
+        // 腹部：时间 / 地点 / 备注 —— 按可用高度逐行追加
+        if (!er.event.allDay) {
+            int yCursor = tr.top() + 18;  // 标题之下
+            const int kRowH = 14;
+
+            // 第 1 行：时间（永远显示，前提是事件还放得下）
+            if (r.height() > 28) {
+                QFont ft = font(); ft.setPointSize(9);
+                p.setFont(ft);
+                QString ts = er.event.startDate.toString("HH:mm")
+                           + " - " + er.event.endDate.toString("HH:mm");
+                p.drawText(QRect(tr.left(), yCursor, tr.width(), 16),
+                           Qt::AlignLeft | Qt::AlignTop, ts);
+                yCursor += kRowH;
+            }
+
+            // 第 2 行：地点（如有，且事件高度足够）
+            if (!er.event.location.isEmpty() && (yCursor + kRowH) <= tr.bottom()) {
+                QFont fl = font(); fl.setPointSize(9);
+                p.setFont(fl);
+                QFontMetrics flm(fl);
+                QString loc = "📍 " + er.event.location;
+                loc = flm.elidedText(loc, Qt::ElideRight, tr.width());
+                p.drawText(QRect(tr.left(), yCursor, tr.width(), 16),
+                           Qt::AlignLeft | Qt::AlignTop, loc);
+                yCursor += kRowH;
+            }
+
+            // 第 3 行：备注（如有，并且事件还有空间）—— 取首行 + 省略号
+            if (!er.event.description.isEmpty() && (yCursor + kRowH) <= tr.bottom()) {
+                QFont fd = font(); fd.setPointSize(9); fd.setItalic(true);
+                p.setFont(fd);
+                QFontMetrics fdm(fd);
+                // 只取第一行（去掉换行后的内容）
+                QString desc = er.event.description;
+                int nl = desc.indexOf('\n');
+                if (nl >= 0) desc = desc.left(nl);
+                desc = fdm.elidedText(desc, Qt::ElideRight, tr.width());
+                // 备注用稍暗的同色系
+                QColor descColor = c.text;
+                descColor.setAlphaF(0.78);
+                p.setPen(descColor);
+                p.drawText(QRect(tr.left(), yCursor, tr.width(), 16),
+                           Qt::AlignLeft | Qt::AlignTop, desc);
+            }
         }
     }
 
@@ -418,6 +457,12 @@ void TimeGridView::mouseMoveEvent(QMouseEvent *e) {
                 tip += "\n" + er.event.startDate.toString("HH:mm")
                     + " - " + er.event.endDate.toString("HH:mm");
             }
+            if (!er.event.location.isEmpty()) {
+                tip += "\n📍 " + er.event.location;
+            }
+            if (!er.event.description.isEmpty()) {
+                tip += "\n" + er.event.description;
+            }
             QToolTip::showText(e->globalPosition().toPoint(), tip, this);
             return;
         }
@@ -427,6 +472,40 @@ void TimeGridView::mouseMoveEvent(QMouseEvent *e) {
 
 void TimeGridView::wheelEvent(QWheelEvent *e) {
     int dy = e->angleDelta().y();
+
+    // ============ Ctrl + 滚轮：纵向缩放（小时格高度） ============
+    if (e->modifiers() & Qt::ControlModifier) {
+        if (dy == 0) { e->accept(); return; }
+
+        // 灵敏度：每个标准滚动单位（120）仅改变 4 px，操作起来很柔和
+        constexpr double kStepPerUnit = 4.0 / 120.0;
+        double targetH = m_hourHeight + dy * kStepPerUnit;
+
+        // 上下限：最小 = 56（默认 1.0x），最大 = 56 * 3.14 ≈ 176（3.14x）
+        constexpr int kMinH = 56;
+        constexpr int kMaxH = int(56 * 3.14 + 0.5);
+        int newH = qBound(double(kMinH), targetH, double(kMaxH));
+        if (newH == m_hourHeight) { e->accept(); return; }
+
+        // 以鼠标所在时间为锚点缩放，避免视野"跳走"
+        int gridTop = m_headerHeight + m_allDayBandHeight;
+        double anchorTimeY = qMax(0, e->position().toPoint().y() - gridTop) + m_scrollY;
+        double anchorRatio = (m_hourHeight > 0) ? anchorTimeY / double(m_hourHeight) : 0;
+
+        m_hourHeight = newH;
+        m_contentHeight = m_hourHeight * 24;
+        m_scrollY = qMax(0, int(anchorRatio * m_hourHeight - (e->position().toPoint().y() - gridTop)));
+        int viewportH = height() - m_headerHeight - m_allDayBandHeight;
+        int maxScroll = qMax(0, m_contentHeight - viewportH);
+        m_scrollY = qMin(m_scrollY, maxScroll);
+
+        rebuildLayout();
+        update();
+        e->accept();
+        return;
+    }
+
+    // ============ 普通滚轮：纵向滚动 ============
     int viewportH = height() - m_headerHeight - m_allDayBandHeight;
     int maxScroll = qMax(0, m_contentHeight - viewportH);
     m_scrollY = qBound(0, m_scrollY - dy, maxScroll);

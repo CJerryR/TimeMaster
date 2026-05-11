@@ -38,7 +38,8 @@ void MonthView::setEvents(const QList<CalendarEvent> &events) {
 QList<QDate> MonthView::buildDays() const {
     QList<QDate> days;
     QDate firstOfMonth(m_currentDate.year(), m_currentDate.month(), 1);
-    int dayOfWeek = firstOfMonth.dayOfWeek() % 7;
+    // 周一为每周起点：Qt 的 dayOfWeek() 返回 Mon=1..Sun=7
+    int dayOfWeek = firstOfMonth.dayOfWeek() - 1;  // Mon=0, Sun=6
     QDate gridStart = firstOfMonth.addDays(-dayOfWeek);
     for (int i = 0; i < 42; ++i) days << gridStart.addDays(i);
     return days;
@@ -130,8 +131,8 @@ void MonthView::paintEvent(QPaintEvent *) {
     // 透明背景（让上层卡片背景透出）
     p.fillRect(rect(), Qt::transparent);
 
-    // 周表头（加粗）
-    static const char *weekdays[] = {"日","一","二","三","四","五","六"};
+    // 周表头：周一开始（加粗）
+    static const char *weekdays[] = {"一","二","三","四","五","六","日"};
     QFont headerFont = font();
     headerFont.setPointSize(11);
     headerFont.setWeight(QFont::Bold);
@@ -140,7 +141,8 @@ void MonthView::paintEvent(QPaintEvent *) {
 
     for (int i = 0; i < 7; ++i) {
         QRect r(qRound(i * cellW), 0, qRound(cellW + 1), HEADER_HEIGHT);
-        bool weekend = (i == 0 || i == 6);
+        // 周一为 i=0，则周六=i=5，周日=i=6
+        bool weekend = (i == 5 || i == 6);
         p.setPen(weekend ? theme.brand() : theme.textSecondary());
         p.drawText(r, Qt::AlignCenter, weekdays[i]);
     }

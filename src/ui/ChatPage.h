@@ -30,6 +30,9 @@ class ChatPage : public QWidget {
 public:
     explicit ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent = nullptr);
 
+protected:
+    void resizeEvent(QResizeEvent *e) override;
+
 private slots:
     void applyTheme();
     void onSend();
@@ -41,6 +44,7 @@ private slots:
 private:
     QLabel *appendBubble(const QString &text, bool isUser, bool isStreaming = false);
     void scrollToBottom();
+    void updateBubblesMaxWidth();
 
     QString basePrompt() const;
     QString buildCalendarContext() const;
@@ -58,6 +62,9 @@ private:
     QLabel *m_ctxStatus;
     QLabel *m_emptyHint;
     QLabel *m_titleIcon = nullptr;
+
+    // 跟踪所有气泡，随窗口拉伸刷新它们的 maxWidth
+    QList<QLabel*> m_bubbles;
 
     QLabel *m_currentStreamingBubble = nullptr;
     QString m_streamingText;
