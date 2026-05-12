@@ -1,5 +1,5 @@
 #define AppName "TimeMaster"
-#define AppVersion "4.3"
+#define AppVersion "4.3.1"
 #define AppPublisher "TimeMaster"
 #define AppURL "https://github.com/CJerryR/TimeMaster"
 #define AppExeName "TimeMaster.exe"
@@ -13,7 +13,7 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 AllowNoIcons=yes
 OutputDir=.
-OutputBaseFilename=TimeMaster_V4.2_Setup
+OutputBaseFilename=TimeMaster_V4.3.1_Setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern

@@ -807,11 +807,11 @@ void CalendarPage::onTimeSlotClicked(const QDateTime &dt) {
 }
 
 void CalendarPage::onMonthDateClicked(const QDate &d) {
-    QDateTime now = QDateTime::currentDateTime();
-    QTime t = (d == QDate::currentDate())
-        ? QTime(qBound(0, now.time().hour() + 1, 22), 0)
-        : QTime(9, 0);
-    openCreateDialog(QDateTime(d, t));
+    // V4.4 #2 — 月视图点格子直接切到日视图（之前是弹新建事件对话框）。
+    // 用户原话："月视图点击日的块应该直接切日视图。"
+    // 新建事件保留：Ctrl+N、右上角"+ 新建日程"、日视图双击空白时间。
+    m_currentDate = d;
+    setView(CalendarView::Day);
 }
 
 void CalendarPage::onMonthOverflowClicked(const QDate &d, const QList<CalendarEvent> &events) {

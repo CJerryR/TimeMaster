@@ -339,7 +339,7 @@ const QHash<QString, QString> &enTable() {
         {"onboarding.step1.body",
             "Time Master is a calm, local-first calendar with two superpowers:\n\n"
             "  · Press Ctrl+K and paste any plan in natural language — AI turns it into events.\n"
-            "  · Chat with your AI assistant over your own calendar.\n\n"
+            "  · Chat with AI-powered reasoning over your own calendar.\n\n"
             "All your data stays on this device."},
         {"onboarding.step2.title",      "Pick a language"},
         {"onboarding.step2.body",       "You can switch any time from the sidebar."},

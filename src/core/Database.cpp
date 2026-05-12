@@ -407,27 +407,33 @@ QList<CategoryStat> Database::getCategoryStats(const QDateTime &start, const QDa
     QHash<EventCategory, int> counts;
     qint64 totalMin = 0;
 
+    // V4.4 #1 — 之前这里把统计上限钳到 "now"，导致"全部时间"范围下
+    // 所有未来事件被整条 `continue` 跳过（lo = e.startDate >= now、
+    // hi = min(end, now) = now，hi <= lo），连事件计数都不+1。用户看到
+    // 顶部四个 KPI 全 0 但下方 ComparisonWidget 显示有未来日程，自相矛盾。
+    //
+    // 修法：分两条路径——
+    //   · 事件数 count 严格按范围窗口算，不受 now 影响（被纳入 range 就计 1 次）；
+    //   · 时长 mins 仍然区分"已度过 vs 待发生"，但未来事件按其计划时长计入，
+    //     这样切到"全部时间"用户能看到包含计划的总投入。
     QDateTime now = QDateTime::currentDateTime();
-    qint64 effectiveEndMs = qMin(end.toMSecsSinceEpoch(), now.toMSecsSinceEpoch());
 
     for (const auto &e : events) {
-        qint64 lo = qMax(e.startDate.toMSecsSinceEpoch(), start.toMSecsSinceEpoch());
-        qint64 hi = qMin(e.endDate.toMSecsSinceEpoch(), effectiveEndMs);
-        if (hi <= lo) continue;
-
-        qint64 mins;
-        if (e.allDay) {
-            mins = 0;
-        } else {
-            mins = (hi - lo) / 60000;
-        }
-
+        // 1) 事件计数：只要事件与 [start, end] 有交集就 +1
+        qint64 evLo = qMax(e.startDate.toMSecsSinceEpoch(), start.toMSecsSinceEpoch());
+        qint64 evHi = qMin(e.endDate.toMSecsSinceEpoch(),   end.toMSecsSinceEpoch());
+        if (evHi <= evLo) continue;
         counts[e.category] += 1;
+
+        // 2) 时长：allDay 不计时长，其余按 [start..end] 与事件交集算
+        if (e.allDay) continue;
+        qint64 mins = (evHi - evLo) / 60000;
         if (mins > 0) {
             minutes[e.category] += mins;
             totalMin += mins;
         }
     }
+    Q_UNUSED(now);
 
     for (auto cat : allCategories()) {
         if (!minutes.contains(cat)) continue;
@@ -476,14 +482,15 @@ QList<DailySummary> Database::getDailySummaries(const QDateTime &start, const QD
     QMap<QDate, qint64> minutesMap;
     QMap<QDate, int> countMap;
 
-    QDateTime now = QDateTime::currentDateTime();
-    qint64 effectiveEndMs = qMin(end.toMSecsSinceEpoch(), now.toMSecsSinceEpoch());
+    // V4.4 #1 — 同 getCategoryStats：去掉 effectiveEndMs 截断，让未来事件
+    // 也在每日趋势里出现。否则"全部时间"范围下，未来计划的折线全是 0。
+    qint64 endMs = end.toMSecsSinceEpoch();
 
     for (const auto &e : events) {
         if (e.allDay) continue;
 
         qint64 evStartMs = qMax(e.startDate.toMSecsSinceEpoch(), start.toMSecsSinceEpoch());
-        qint64 evEndMs = qMin(e.endDate.toMSecsSinceEpoch(), effectiveEndMs);
+        qint64 evEndMs = qMin(e.endDate.toMSecsSinceEpoch(), endMs);
         if (evEndMs <= evStartMs) continue;
 
         QDate d = QDateTime::fromMSecsSinceEpoch(evStartMs).date();
@@ -522,14 +529,15 @@ QList<HourlyBucket> Database::getHourlyDistribution(const QDateTime &start, cons
     auto events = getEventsByRange(start, end);
     qint64 buckets[24] = {};
 
-    QDateTime now = QDateTime::currentDateTime();
-    qint64 effectiveEndMs = qMin(end.toMSecsSinceEpoch(), now.toMSecsSinceEpoch());
+    // V4.4 #1 — 同 getCategoryStats：未来时段也要在 24x7 热力图里显示，
+    // 否则用户安排了未来日程，节奏图依然是空的。
+    qint64 endMs = end.toMSecsSinceEpoch();
 
     for (const auto &e : events) {
         if (e.allDay) continue;
 
         qint64 evStartMs = qMax(e.startDate.toMSecsSinceEpoch(), start.toMSecsSinceEpoch());
-        qint64 evEndMs = qMin(e.endDate.toMSecsSinceEpoch(), effectiveEndMs);
+        qint64 evEndMs = qMin(e.endDate.toMSecsSinceEpoch(), endMs);
         if (evEndMs <= evStartMs) continue;
 
         QDateTime curTime = QDateTime::fromMSecsSinceEpoch(evStartMs);

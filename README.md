@@ -2,7 +2,7 @@
 
 一款桌面端日程管理与时间分析工具，基于 Qt 6 + C++17 构建，使用 DeepSeek 模型把自然语言转成结构化日程。
 
-**当前版本：V4.3** — 见 [CHANGES_V4_3.md](CHANGES_V4_3.md) 了解本轮全部 11 条用户反馈的改动。
+**当前版本：V4.3.1** — 见 [CHANGES_V4_3.md](CHANGES_V4_3.md) 了解本轮改动。
 
 ![brand-red](https://img.shields.io/badge/brand-%23D97757-D97757) ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![Qt6](https://img.shields.io/badge/Qt-6-41cd52) ![SQLite](https://img.shields.io/badge/storage-SQLite-003B57)
 
@@ -10,7 +10,7 @@
 
 ## V4.3 亮点
 
-- 🤖 **AI 直接操作日历**（审批式操作）— 让 AI 在对话中增删改日程，每条变更弹审批卡，可以「允许此次 / 总是允许 / 拒绝」，所有动作进入历史抽屉，支持撤销。
+- 🤖 **AI 直接操作日历**（审批卡模式）— 让 AI 在对话中增删改日程，每条变更弹审批卡，可以「允许此次 / 总是允许 / 拒绝」，所有动作进入历史抽屉，支持撤销。
 - 📅 **周一 / 周日开始可选** — 设置里一键切换，月 / 周视图同步。
 - 📊 **分析页加 All time 范围 + 刷新反馈** — 默认显示全部时间数据（之前 Last 7 漏掉未来事件），刷新后显示"已更新到 HH:mm:ss"。
 - 🎨 **EventDialog 全面修复** — 颜色 12 色齐全（之前 Brown/Gray/Cyan 看不见）、深色模式不再白底、类别行自动换行、文字不再重叠。

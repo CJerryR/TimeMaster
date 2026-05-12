@@ -179,7 +179,6 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
 
     // V4.3 #7 — 操作历史按钮。点开切换抽屉显示，抽屉里两列展示最近被允许的
     // add / delete 操作，每行有一个撤销按钮。
-    // 抽屉，但更紧凑。
     m_historyBtn = new QPushButton;
     m_historyBtn->setObjectName("ChatGhostBtn");
     m_historyBtn->setCursor(Qt::PointingHandCursor);

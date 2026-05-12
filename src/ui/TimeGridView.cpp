@@ -185,9 +185,10 @@ QList<TimeGridView::EventLayout> TimeGridView::layoutDayEvents(const QDate &date
 
         int top = int(startM / 60.0 * m_hourHeight);
         int hgt = int((endM - startM) / 60.0 * m_hourHeight);
-        // V4.3 #6 — 短日程显示最小高度从 18 提到 36，足够放下标题 + 时间两行。
-        // 这样 15 分钟会议这种短日程也能完整看到标题和时间，不再只剩一条彩条。
-        if (hgt < 36) hgt = 36;
+        // V4.3 #6 / V4.4 #3 — 短日程显示最小高度。V4.3 设为 36，但 #3 把
+        // 标题区域顶部 padding 从 4 提到 7，36 已经放不下"标题+时间"两行，
+        // 这里再提到 44：7 (top) + 22 (title) + 14 (time) + 1 (bottom) = 44。
+        if (hgt < 44) hgt = 44;
 
         double colW = double(dayCol.width() - 4) / totalCols;
         int x = dayCol.left() + 2 + int(col * colW);
@@ -357,21 +358,25 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         barPath.addRoundedRect(bar, 1.5, 1.5);
         p.fillPath(barPath, c.text);
 
-        QRect tr(r.left() + 10, r.top() + 4, r.width() - 14, r.height() - 6);
+        // V4.4 #3 — 标题文本框顶部 padding 4 → 7，给中文字符的顶部笔画
+        // （比如"接"的提手旁、"深"的氵）留出呼吸空间。配套地标题高度
+        // 18 → 22，避免 descender 被裁。
+        QRect tr(r.left() + 10, r.top() + 7, r.width() - 14, r.height() - 10);
         p.setPen(c.text);
 
         QFont f = font(); f.setPointSize(11); f.setWeight(QFont::DemiBold);
         p.setFont(f);
         QFontMetrics fm(f);
         QString title = fm.elidedText(er.event.title, Qt::ElideRight, tr.width());
-        p.drawText(QRect(tr.left(), tr.top(), tr.width(), 18),
+        p.drawText(QRect(tr.left(), tr.top(), tr.width(), 22),
                    Qt::AlignLeft | Qt::AlignTop, title);
 
         if (!er.event.allDay) {
-            int yCursor = tr.top() + 18;
+            // V4.4 #3 — 标题用 22px 后，第二行（时间）起点上移 4px
+            int yCursor = tr.top() + 22;
             const int kRowH = 14;
 
-            if (r.height() > 28) {
+            if (r.height() > 32) {
                 QFont ft = font();
                 ft.setFamily(FontLoader::numericFamily());
                 ft.setPointSize(9);
