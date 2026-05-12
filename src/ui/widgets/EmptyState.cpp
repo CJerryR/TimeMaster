@@ -20,9 +20,10 @@ EmptyState::EmptyState(QWidget *parent) : QWidget(parent) {
 
     auto *box = new QWidget;
     box->setObjectName("EmptyStateCard");
+    box->setMinimumWidth(420);   // V4.3 #5 — 给卡片一个最小宽度，看起来稳重
     auto *boxLay = new QVBoxLayout(box);
-    boxLay->setContentsMargins(36, 32, 36, 32);
-    boxLay->setSpacing(10);
+    boxLay->setContentsMargins(44, 38, 44, 38);
+    boxLay->setSpacing(12);
     boxLay->setAlignment(Qt::AlignCenter);
 
     m_title = new QLabel;
@@ -99,7 +100,9 @@ void EmptyState::applyTheme() {
     setStyleSheet(QString(R"(
         QWidget#EmptyState { background: transparent; }
         QWidget#EmptyStateCard {
-            background: transparent;
+            background-color: %4;
+            border: 1px solid %5;
+            border-radius: 16px;
         }
         QLabel#EmptyTitle {
             color: %1;
@@ -118,12 +121,13 @@ void EmptyState::applyTheme() {
             padding-top: 4px;
         }
         QPushButton#EmptyActionBtn {
-            background-color: %4;
+            background-color: %7;
             color: %1;
             border: 1px solid %5;
             border-radius: 8px;
             padding: 8px 16px;
             font-weight: 500;
+            outline: 0;
         }
         QPushButton#EmptyActionBtn:hover {
             background-color: %6;
@@ -134,9 +138,10 @@ void EmptyState::applyTheme() {
     .arg(t.textPrimary().name())
     .arg(t.textSecondary().name())
     .arg(t.brand().name())
-    .arg(t.bgContainer().name())
+    .arg(t.cardBgRgba())      // V4.3 #5 — 不再是 transparent，给一个明确的卡片底
     .arg(t.strokeRgba())
-    .arg(t.cardBgHoverRgba()));
+    .arg(t.cardBgHoverRgba())
+    .arg(t.bgContainer().name()));
 }
 
 } // namespace timemaster

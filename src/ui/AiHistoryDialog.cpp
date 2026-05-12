@@ -19,6 +19,7 @@ namespace timemaster {
 AiHistoryDialog::AiHistoryDialog(Database *db, QWidget *parent)
     : QDialog(parent), m_db(db)
 {
+    setObjectName("AiHistoryDialog");   // V4.3 #2 — for theme-aware QSS
     setModal(true);
     resize(880, 580);
     setMinimumSize(740, 480);
@@ -210,7 +211,7 @@ void AiHistoryDialog::applyTheme() {
     QString container = t.bgContainer().name();
 
     setStyleSheet(t.globalStylesheet() + QString(R"(
-        QDialog {
+        QDialog#AiHistoryDialog {
             background-color: %10;
         }
         QLabel#HistoryTitle {

@@ -13,9 +13,10 @@ namespace {
 QString g_primary;
 QString g_cjk;
 QString g_mono;
+QString g_slogen;     // V4.2: Smiley Sans
+QString g_serif;      // V4.2: IBM Plex Serif (used for both primary and numeric)
 bool    g_customLoaded = false;
 
-// 从一个 .ttf 文件注册到 QFontDatabase，返回主 family 名
 QString registerFont(const QString &path) {
     int id = QFontDatabase::addApplicationFont(path);
     if (id < 0) return {};
@@ -24,29 +25,37 @@ QString registerFont(const QString &path) {
     return fams.first();
 }
 
-// 判定一个 family 看起来是否中文字体（含 CJK 字符）
 bool looksLikeCjk(const QString &fam) {
-    QFont test(fam);
     return QFontDatabase::writingSystems(fam).contains(QFontDatabase::SimplifiedChinese)
         || fam.contains("Noto Sans") || fam.contains("Source Han") || fam.contains("YaHei")
-        || fam.contains("PingFang") || fam.contains("HarmonyOS") || fam.contains("思源");
+        || fam.contains("PingFang") || fam.contains("HarmonyOS") || fam.contains("思源")
+        || fam.contains("Smiley", Qt::CaseInsensitive)
+        || fam.contains("得意黑");
 }
 
 bool looksLikeMono(const QString &fam) {
     return fam.contains("Mono", Qt::CaseInsensitive) || fam.contains("Code", Qt::CaseInsensitive)
         || fam.contains("Consolas", Qt::CaseInsensitive);
 }
+
+bool looksLikeSlogen(const QString &fam, const QString &fname) {
+    return fam.contains("Smiley", Qt::CaseInsensitive)
+        || fname.contains("Smiley", Qt::CaseInsensitive)
+        || fam.contains("得意黑");
+}
+
+bool looksLikeIbmPlexSerif(const QString &fam, const QString &fname) {
+    return (fam.contains("IBM Plex", Qt::CaseInsensitive) && fam.contains("Serif", Qt::CaseInsensitive))
+        || fname.contains("IBMPlexSerif", Qt::CaseInsensitive);
+}
 } // namespace
 
 void FontLoader::initialize() {
     QStringList searchRoots;
-    // 1) Qt 资源
     searchRoots << ":/fonts";
-    // 2) exe 同级 fonts/
     searchRoots << QCoreApplication::applicationDirPath() + "/fonts";
-    // 3) exe 同级 assets/fonts/（项目开发态）
     searchRoots << QCoreApplication::applicationDirPath() + "/assets/fonts";
-    // 4) 向上寻找项目根的 assets/fonts/
+
     QDir up(QCoreApplication::applicationDirPath());
     for (int i = 0; i < 5; ++i) {
         if (up.exists("assets/fonts")) {
@@ -59,6 +68,8 @@ void FontLoader::initialize() {
     QStringList primaryCandidates;
     QStringList cjkCandidates;
     QStringList monoCandidates;
+    QStringList serifCandidates;
+    QStringList slogenCandidates;
 
     for (const QString &root : searchRoots) {
         QDirIterator it(root, {"*.ttf", "*.otf"}, QDir::Files, QDirIterator::Subdirectories);
@@ -68,7 +79,16 @@ void FontLoader::initialize() {
             if (fam.isEmpty()) continue;
             g_customLoaded = true;
             QString fname = QFileInfo(p).baseName();
-            if (looksLikeMono(fname) || looksLikeMono(fam)) {
+
+            // V4.2: priority bucketing — slogan > serif > mono > cjk > primary
+            if (looksLikeSlogen(fam, fname)) {
+                slogenCandidates << fam;
+                // Smiley Sans does contain CJK glyphs but we don't want it as the default
+                // CJK family. So we DON'T add it to cjkCandidates.
+            } else if (looksLikeIbmPlexSerif(fam, fname)) {
+                serifCandidates << fam;
+                primaryCandidates << fam;
+            } else if (looksLikeMono(fname) || looksLikeMono(fam)) {
                 monoCandidates << fam;
             } else if (looksLikeCjk(fam) || looksLikeCjk(fname)) {
                 cjkCandidates << fam;
@@ -87,15 +107,16 @@ void FontLoader::initialize() {
         return haystack.isEmpty() ? QString() : haystack.first();
     };
 
-    // 主显示字体：偏好 Inter > Source Sans > 任意已加载
-    g_primary = pickFirstContaining(primaryCandidates, {"Inter", "Source Sans", "SF Pro", "Manrope"});
-    // 中文字体：偏好 Noto Sans CJK > Source Han > 已加载
+    // V4.2 §6.1 — IBM Plex Serif is now the preferred Latin family
+    g_primary = pickFirstContaining(primaryCandidates,
+                                    {"IBM Plex Serif", "Inter", "Source Sans", "SF Pro", "Manrope"});
     g_cjk     = pickFirstContaining(cjkCandidates, {"Noto Sans CJK SC", "Noto Sans SC",
                                                     "Source Han Sans SC", "Source Han Sans"});
-    // 等宽：偏好 JetBrains Mono > Source Code Pro
     g_mono    = pickFirstContaining(monoCandidates, {"JetBrains Mono", "Source Code Pro", "Fira Code"});
+    g_serif   = pickFirstContaining(serifCandidates, {"IBM Plex Serif"});
+    g_slogen  = pickFirstContaining(slogenCandidates, {"Smiley Sans", "得意黑"});
 
-    // ---- 兜底到系统字体 ----
+    // ---- 兜底 ----
     if (g_primary.isEmpty()) {
 #ifdef Q_OS_WIN
         g_primary = "Segoe UI Variable";
@@ -123,26 +144,40 @@ void FontLoader::initialize() {
         g_mono = "Monospace";
 #endif
     }
+    if (g_serif.isEmpty()) {
+        // Fallback to whatever the system has if IBM Plex Serif wasn't found
+#ifdef Q_OS_WIN
+        g_serif = "Georgia";
+#elif defined(Q_OS_MAC)
+        g_serif = "Times New Roman";
+#else
+        g_serif = "Serif";
+#endif
+    }
+    // g_slogen may be empty if Smiley Sans wasn't found — callers handle that.
 
     qInfo() << "[FontLoader] primary=" << g_primary
             << "cjk=" << g_cjk
             << "mono=" << g_mono
+            << "serif=" << g_serif
+            << "slogen=" << g_slogen
             << "custom=" << g_customLoaded;
 }
 
 QString FontLoader::primaryFamily() { return g_primary; }
 QString FontLoader::cjkFamily()     { return g_cjk; }
 QString FontLoader::monoFamily()    { return g_mono; }
+QString FontLoader::serifFamily()   { return g_serif; }
+
+QString FontLoader::slogenFamily() {
+    // If Smiley Sans wasn't loaded, fall back to a bold CJK font that still feels punchy
+    if (!g_slogen.isEmpty()) return g_slogen;
+    return g_cjk;
+}
 
 QString FontLoader::numericFamily() {
-    // 偏好 Inter / SF Pro / Segoe UI Variable — 它们的 OpenType tnum 表现最稳
-    auto families = QFontDatabase::families();
-    for (const char *want : {"Inter", "SF Pro Display", "SF Pro Text",
-                              "Segoe UI Variable", "Segoe UI"}) {
-        for (const auto &f : families) {
-            if (f.compare(QString::fromLatin1(want), Qt::CaseInsensitive) == 0) return f;
-        }
-    }
+    // V4.2 §6: numbers explicitly use IBM Plex Serif (literary/publication look)
+    if (!g_serif.isEmpty()) return g_serif;
     return g_primary;
 }
 
@@ -151,6 +186,8 @@ QString FontLoader::familyChain() {
     auto add = [&](const QString &f) {
         if (!f.isEmpty() && !chain.contains(f)) chain << ("\"" + f + "\"");
     };
+    // V4.2: Serif first (Latin), then CJK (for Chinese glyphs Qt falls back automatically)
+    add(g_serif.isEmpty() ? g_primary : g_serif);
     add(g_primary);
     add(g_cjk);
 #ifdef Q_OS_WIN
@@ -163,7 +200,7 @@ QString FontLoader::familyChain() {
 #else
     add("Noto Sans CJK SC");
 #endif
-    add("sans-serif");
+    add("serif");
     return chain.join(", ");
 }
 

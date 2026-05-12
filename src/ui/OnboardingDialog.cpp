@@ -17,7 +17,8 @@ OnboardingDialog::OnboardingDialog(DeepSeekClient *ai, QWidget *parent)
     : QDialog(parent), m_ai(ai)
 {
     setModal(true);
-    setMinimumSize(620, 520);
+    setMinimumSize(720, 600);
+    resize(760, 620);
     setObjectName("OnboardingDialog");
     buildUi();
     applyLanguage();
@@ -91,13 +92,13 @@ void OnboardingDialog::buildUi() {
 void OnboardingDialog::buildStep1(QWidget *page) {
     auto *lay = new QVBoxLayout(page);
     lay->setContentsMargins(0, 20, 0, 20);
-    lay->setSpacing(16);
+    lay->setSpacing(20);
     lay->setAlignment(Qt::AlignCenter);
 
     auto *logoRow = new QHBoxLayout;
     logoRow->setAlignment(Qt::AlignCenter);
     auto *logo = new QLabel("🕰");
-    QFont lf; lf.setPointSize(40);
+    QFont lf; lf.setPointSize(56);
     logo->setFont(lf);
     logo->setAlignment(Qt::AlignCenter);
     logoRow->addWidget(logo);
@@ -106,7 +107,7 @@ void OnboardingDialog::buildStep1(QWidget *page) {
     m_step1Title = new QLabel;
     m_step1Title->setObjectName("OnboardTitle");
     m_step1Title->setAlignment(Qt::AlignCenter);
-    QFont tf; tf.setPointSize(20); tf.setWeight(QFont::DemiBold);
+    QFont tf; tf.setPointSize(26); tf.setWeight(QFont::Bold);
     m_step1Title->setFont(tf);
     lay->addWidget(m_step1Title);
 
@@ -114,20 +115,22 @@ void OnboardingDialog::buildStep1(QWidget *page) {
     m_step1Body->setObjectName("OnboardBody");
     m_step1Body->setAlignment(Qt::AlignCenter);
     m_step1Body->setWordWrap(true);
-    m_step1Body->setMaximumWidth(480);
+    m_step1Body->setMaximumWidth(560);
+    QFont bf; bf.setPointSize(13);
+    m_step1Body->setFont(bf);
     lay->addWidget(m_step1Body, 0, Qt::AlignCenter);
     lay->addStretch();
 }
 
 void OnboardingDialog::buildStep2(QWidget *page) {
     auto *lay = new QVBoxLayout(page);
-    lay->setContentsMargins(0, 32, 0, 20);
-    lay->setSpacing(18);
+    lay->setContentsMargins(0, 36, 0, 20);
+    lay->setSpacing(20);
 
     m_step2Title = new QLabel;
     m_step2Title->setObjectName("OnboardTitle");
     m_step2Title->setAlignment(Qt::AlignCenter);
-    QFont tf; tf.setPointSize(20); tf.setWeight(QFont::DemiBold);
+    QFont tf; tf.setPointSize(26); tf.setWeight(QFont::Bold);
     m_step2Title->setFont(tf);
     lay->addWidget(m_step2Title);
 
@@ -135,22 +138,24 @@ void OnboardingDialog::buildStep2(QWidget *page) {
     m_step2Body->setObjectName("OnboardBody");
     m_step2Body->setAlignment(Qt::AlignCenter);
     m_step2Body->setWordWrap(true);
+    QFont bf; bf.setPointSize(13);
+    m_step2Body->setFont(bf);
     lay->addWidget(m_step2Body);
 
     auto *btnRow = new QHBoxLayout;
-    btnRow->setSpacing(16);
+    btnRow->setSpacing(18);
     btnRow->addStretch();
 
     m_enBtn = new QPushButton;
     m_enBtn->setObjectName("OnboardLangBtn");
-    m_enBtn->setMinimumSize(160, 60);
+    m_enBtn->setMinimumSize(180, 72);
     m_enBtn->setCursor(Qt::PointingHandCursor);
     m_enBtn->setCheckable(true);
     btnRow->addWidget(m_enBtn);
 
     m_zhBtn = new QPushButton;
     m_zhBtn->setObjectName("OnboardLangBtn");
-    m_zhBtn->setMinimumSize(160, 60);
+    m_zhBtn->setMinimumSize(180, 72);
     m_zhBtn->setCursor(Qt::PointingHandCursor);
     m_zhBtn->setCheckable(true);
     btnRow->addWidget(m_zhBtn);
@@ -178,13 +183,13 @@ void OnboardingDialog::buildStep2(QWidget *page) {
 
 void OnboardingDialog::buildStep3(QWidget *page) {
     auto *lay = new QVBoxLayout(page);
-    lay->setContentsMargins(0, 28, 0, 20);
-    lay->setSpacing(16);
+    lay->setContentsMargins(0, 32, 0, 20);
+    lay->setSpacing(18);
 
     m_step3Title = new QLabel;
     m_step3Title->setObjectName("OnboardTitle");
     m_step3Title->setAlignment(Qt::AlignCenter);
-    QFont tf; tf.setPointSize(20); tf.setWeight(QFont::DemiBold);
+    QFont tf; tf.setPointSize(26); tf.setWeight(QFont::Bold);
     m_step3Title->setFont(tf);
     lay->addWidget(m_step3Title);
 
@@ -192,16 +197,20 @@ void OnboardingDialog::buildStep3(QWidget *page) {
     m_step3Body->setObjectName("OnboardBody");
     m_step3Body->setAlignment(Qt::AlignCenter);
     m_step3Body->setWordWrap(true);
-    m_step3Body->setMaximumWidth(520);
+    m_step3Body->setMaximumWidth(560);
+    QFont bf; bf.setPointSize(13);
+    m_step3Body->setFont(bf);
     lay->addWidget(m_step3Body, 0, Qt::AlignCenter);
 
     auto *editRow = new QHBoxLayout;
     editRow->setSpacing(8);
-    editRow->setContentsMargins(40, 8, 40, 8);
+    editRow->setContentsMargins(60, 14, 60, 8);
     m_apiKeyEdit = new QLineEdit;
     m_apiKeyEdit->setObjectName("OnboardApiInput");
     m_apiKeyEdit->setEchoMode(QLineEdit::Password);
-    m_apiKeyEdit->setMinimumHeight(40);
+    m_apiKeyEdit->setMinimumHeight(46);
+    QFont ef; ef.setPointSize(13);
+    m_apiKeyEdit->setFont(ef);
     if (m_ai && m_ai->hasApiKey()) m_apiKeyEdit->setText(m_ai->apiKey());
     editRow->addWidget(m_apiKeyEdit);
     lay->addLayout(editRow);
@@ -291,8 +300,8 @@ void OnboardingDialog::applyTheme() {
         QLabel#OnboardBody {
             color: %3;
             background: transparent;
-            font-size: 14px;
-            line-height: 1.7;
+            font-size: 16px;
+            line-height: 1.8;
         }
         QLabel#StepDotActive {
             background-color: %4;
@@ -306,8 +315,8 @@ void OnboardingDialog::applyTheme() {
             background-color: %6;
             color: %2;
             border: 1px solid %5;
-            border-radius: 12px;
-            font-size: 16px;
+            border-radius: 14px;
+            font-size: 18px;
             font-weight: 600;
         }
         QPushButton#OnboardLangBtn:hover {

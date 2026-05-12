@@ -61,6 +61,9 @@ MainWindow::MainWindow(Database *db, DeepSeekClient *ai, QWidget *parent)
     m_analyticsPage = new AnalyticsPage(m_db);
     m_chatPage      = new ChatPage(m_db, m_ai);
 
+    // V4.2 #10 — clicking the privacy chip on the chat page opens Settings
+    connect(m_chatPage, &ChatPage::openSettingsRequested, this, &MainWindow::onSettings);
+
     m_stack->addWidget(m_calendarPage);
     m_stack->addWidget(m_analyticsPage);
     m_stack->addWidget(m_chatPage);
@@ -99,6 +102,8 @@ void MainWindow::onThemeToggle() { Theme::instance().toggle(); }
 void MainWindow::onSettings() {
     SettingsDialog dlg(m_ai, m_db->filePath(), this);
     dlg.exec();
+    // V4.2 #10 — past/future days may have changed; refresh chat page chip.
+    if (m_chatPage) m_chatPage->refreshFromSettings();
 }
 
 void MainWindow::applyTheme() {

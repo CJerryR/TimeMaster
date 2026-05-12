@@ -34,6 +34,7 @@ public slots:
 private slots:
     void onRangeChanged();
     void applyTheme();
+    void applyLanguage();
 
 private:
     void buildUI();
@@ -45,12 +46,8 @@ private:
     QLabel *m_titleIcon = nullptr;
     QComboBox *m_rangeCombo;
     QPushButton *m_refreshBtn = nullptr;
-
-    // V4 § 6.3: section headers
-    QLabel *m_secOverview  = nullptr;
-    QLabel *m_secStructure = nullptr;
-    QLabel *m_secInsights  = nullptr;
-    QList<QFrame*> m_sectionAccentBars;
+    // V4.3 #11 — "数据已更新到 14:32" 反馈标签，放在刷新按钮旁
+    QLabel *m_updatedLabel = nullptr;
 
     StatsCardsWidget *m_statsCards;
     CategoryPieChart *m_pieChart;
@@ -62,20 +59,12 @@ private:
     ComparisonWidget *m_comparisonWidget = nullptr;
     MotivationWidget *m_motivationWidget = nullptr;
 
-    QScrollArea *m_scrollArea;
-
-    // V4 § 5.2: empty state shown when 7d events == 0
-    QWidget    *m_scrollContent = nullptr;
-    class EmptyState *m_emptyState = nullptr;
-    QWidget    *m_contentHost = nullptr;
-
-    // Subtitle labels (for language refresh)
+    // Subtitle labels (for i18n refresh)
     QLabel *m_pieTitle = nullptr;
     QLabel *m_barTitle = nullptr;
     QLabel *m_trendTitle = nullptr;
 
-private slots:
-    void applyLanguage();
+    QScrollArea *m_scrollArea;
 };
 
 } // namespace timemaster

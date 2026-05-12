@@ -51,7 +51,7 @@ private:
 
     int m_hourHeight = 56;
     int m_timeGutter = 56;
-    int m_headerHeight = 60;
+    int m_headerHeight = 66;
     int m_allDayBandHeight = 0;
 
     int m_scrollY = 0;

@@ -121,6 +121,7 @@ AiResultsDialog::AiResultsDialog(QList<ScheduleSuggestion> items, QWidget *paren
     : QDialog(parent), m_items(std::move(items))
 {
     setWindowTitle(I18n::t("ai.results.title"));
+    setObjectName("AiResultsDialog");   // V4.3 #2 — for theme-aware QSS
     setModal(true);
     setMinimumSize(640, 600);
     resize(680, 640);
@@ -310,7 +311,11 @@ QList<ScheduleSuggestion> AiResultsDialog::selectedSuggestions() const {
 }
 
 void AiResultsDialog::applyTheme() {
-    setStyleSheet(Theme::instance().globalStylesheet() + QString(R"(
+    auto &t = Theme::instance();
+    // V4.3 #2 — 同 EventDialog：显式设置 QDialog 背景，否则黑暗模式下 Qt 默认
+    // 调系统 palette.window（浅色），整个弹窗"浅底深字"看起来很错位。
+    setStyleSheet(t.globalStylesheet() + QString(R"(
+        QDialog#AiResultsDialog { background-color: %5; }
         QScrollArea#AiResultsScroll {
             background: transparent;
             border: none;
@@ -321,17 +326,19 @@ void AiResultsDialog::applyTheme() {
             border-radius: 8px;
             padding: 5px 12px;
             color: %2;
-            font-size: 12px;
+            font-size: 13px;
+            outline: 0;
         }
         QPushButton#ToggleAllBtn:hover {
             background: %3;
             color: %4;
         }
     )")
-    .arg(Theme::instance().strokeRgba())
-    .arg(Theme::instance().textSecondary().name())
-    .arg(Theme::instance().cardBgHoverRgba())
-    .arg(Theme::instance().textPrimary().name()));
+    .arg(t.strokeRgba())
+    .arg(t.textSecondary().name())
+    .arg(t.cardBgHoverRgba())
+    .arg(t.textPrimary().name())
+    .arg(t.bgPage().name()));
 
     for (AiSuggestionRow *r : m_rowWidgets) {
         r->applyStyle();

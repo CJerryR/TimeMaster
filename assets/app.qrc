@@ -10,5 +10,13 @@
     <file alias="icons/app_07.svg">icons/07_compass.svg</file>
     <file alias="icons/app_08.svg">icons/08_time_band.svg</file>
     <file alias="icons/app_09.svg">icons/09_time_seal.svg</file>
+
+    <!-- V4.2: 内嵌字体 — IBM Plex Serif (Latin / 数字), Smiley Sans (slogan) -->
+    <file alias="fonts/IBMPlexSerif-Regular.ttf">fonts/IBM_Plex_Serif/IBMPlexSerif-Regular.ttf</file>
+    <file alias="fonts/IBMPlexSerif-Italic.ttf">fonts/IBM_Plex_Serif/IBMPlexSerif-Italic.ttf</file>
+    <file alias="fonts/IBMPlexSerif-Medium.ttf">fonts/IBM_Plex_Serif/IBMPlexSerif-Medium.ttf</file>
+    <file alias="fonts/IBMPlexSerif-SemiBold.ttf">fonts/IBM_Plex_Serif/IBMPlexSerif-SemiBold.ttf</file>
+    <file alias="fonts/IBMPlexSerif-Bold.ttf">fonts/IBM_Plex_Serif/IBMPlexSerif-Bold.ttf</file>
+    <file alias="fonts/SmileySans-Oblique.ttf">fonts/Smiley_Sans/SmileySans-Oblique.ttf</file>
   </qresource>
 </RCC>

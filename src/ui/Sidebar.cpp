@@ -84,6 +84,7 @@ Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
     m_langBtn->setFixedSize(28, 28);
     m_langBtn->setIconSize(QSize(16, 16));
     m_langBtn->setCursor(Qt::PointingHandCursor);
+    m_langBtn->setFocusPolicy(Qt::NoFocus);  // V4.2 #3
     connect(m_langBtn, &QPushButton::clicked, this, &Sidebar::languageToggleRequested);
 
     m_themeBtn = new QPushButton;
@@ -91,6 +92,7 @@ Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
     m_themeBtn->setFixedSize(28, 28);
     m_themeBtn->setIconSize(QSize(16, 16));
     m_themeBtn->setCursor(Qt::PointingHandCursor);
+    m_themeBtn->setFocusPolicy(Qt::NoFocus);  // V4.2 #3
     connect(m_themeBtn, &QPushButton::clicked, this, &Sidebar::themeToggleRequested);
 
     m_settingsBtn = new QPushButton;
@@ -98,6 +100,7 @@ Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
     m_settingsBtn->setFixedSize(28, 28);
     m_settingsBtn->setIconSize(QSize(16, 16));
     m_settingsBtn->setCursor(Qt::PointingHandCursor);
+    m_settingsBtn->setFocusPolicy(Qt::NoFocus);  // V4.2 #3
     connect(m_settingsBtn, &QPushButton::clicked, this, &Sidebar::settingsRequested);
 
     toolRow->addWidget(m_langBtn);
@@ -117,10 +120,13 @@ Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
 QPushButton *Sidebar::makeNavButton(int iconId, const QString &i18nKey) {
     auto *btn = new QPushButton(I18n::t(i18nKey));
     btn->setObjectName("SidebarNavBtn");
-    btn->setMinimumHeight(40);
+    btn->setMinimumHeight(44);    // V4.2 #4: taller for bigger text
     btn->setIconSize(QSize(18, 18));
     btn->setCursor(Qt::PointingHandCursor);
     btn->setCheckable(true);
+    // V4.2 #3: kill the dashed focus rectangle by not accepting keyboard focus.
+    // We still rely on global outline:0 in QSS, but this is belt-and-suspenders.
+    btn->setFocusPolicy(Qt::NoFocus);
     btn->setProperty("iconId", iconId);
     btn->setProperty("i18nKey", i18nKey);
     return btn;
@@ -176,7 +182,7 @@ void Sidebar::applyTheme() {
         }
         QLabel#BrandText {
             color: %4;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
             letter-spacing: 0.2px;
         }
@@ -187,8 +193,9 @@ void Sidebar::applyTheme() {
             border-radius: 8px;
             background-color: transparent;
             color: %5;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
+            outline: 0;
         }
         QPushButton#SidebarNavBtn:hover {
             background-color: rgba(120,120,140,0.08);

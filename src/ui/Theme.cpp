@@ -22,45 +22,48 @@ void Theme::setMode(Mode m) {
 
 void Theme::toggle() { setMode(m_mode == Light ? Dark : Light); }
 
-// ============== Opaque colors (V4) ==============
+// ============== Opaque colors (V4.2) ==============
+// V4.2 #7: both modes get a slightly DARKER page background. Light goes from
+// #F2EEE5 -> #E8E1CF (warm paper, noticeably deeper); Dark drops to V3.2 spec
+// #1F1F1E for status bar feeling. Containers (cards) keep a clear hierarchy
+// step above the page.
 
 QColor Theme::bgPage() const {
-    // Light: warmer paper (#F2EEE5); Dark: paper-warm dark (#26241F)
-    return m_mode == Light ? QColor("#F2EEE5") : QColor("#26241F");
+    return m_mode == Light ? QColor("#E8E1CF") : QColor("#1F1F1E");
 }
 
 QColor Theme::bgContainer() const {
-    // Cards: pure white in Light for clear hierarchy. Dark: warm container.
-    return m_mode == Light ? QColor("#FFFFFF") : QColor("#2E2C26");
+    // Cards: warm off-white in Light for clear hierarchy against deeper page.
+    // Dark: container slightly lighter than the page so cards visibly lift.
+    return m_mode == Light ? QColor("#FAF6EE") : QColor("#2A2826");
 }
 
 QColor Theme::bgComponent() const {
-    return m_mode == Light ? QColor("#EAE5D8") : QColor("#363229");
+    return m_mode == Light ? QColor("#DED7C5") : QColor("#363229");
 }
 
 QColor Theme::bgHover() const {
-    return m_mode == Light ? QColor("#EDE8DF") : QColor("#3A362E");
+    return m_mode == Light ? QColor("#E0DACA") : QColor("#3A362E");
 }
 
 QColor Theme::stroke() const {
-    // 极淡描边：浅色 0.08 / 深色 0.06
-    return m_mode == Light ? QColor(60, 50, 40, 20) : QColor(240, 230, 210, 16);
+    return m_mode == Light ? QColor(60, 50, 40, 22) : QColor(240, 230, 210, 18);
 }
 
 QColor Theme::textPrimary() const {
-    return m_mode == Light ? QColor("#1D1C16") : QColor(247, 247, 245);
+    // V4.2 #8: dark mode text bumped from F7F7F5 to fully checked against deeper bg
+    return m_mode == Light ? QColor("#1D1C16") : QColor("#F7F7F5");
 }
 
 QColor Theme::textSecondary() const {
-    return m_mode == Light ? QColor("#6B645A") : QColor(194, 182, 182);
+    return m_mode == Light ? QColor("#6B645A") : QColor("#C2B6B6");
 }
 
 QColor Theme::textPlaceholder() const {
-    return m_mode == Light ? QColor("#A39B8E") : QColor(146, 148, 138);
+    return m_mode == Light ? QColor("#A39B8E") : QColor("#92948A");
 }
 
 QColor Theme::brand() const {
-    // Light deepened to #C26646 (WCAG AA); Dark keeps #E08A6E
     return m_mode == Light ? QColor("#C26646") : QColor("#E08A6E");
 }
 
@@ -73,7 +76,6 @@ QColor Theme::accent() const {
 }
 
 QColor Theme::todayHighlight() const {
-    // 保留接口；MonthView 已不再用作背景填充
     return m_mode == Light ? QColor(194, 102, 70, 0) : QColor(224, 138, 110, 0);
 }
 
@@ -90,41 +92,40 @@ QColor Theme::danger() const {
 // ============== Semi-transparent rgba (QSS) ==============
 
 QString Theme::cardBgRgba() const {
-    // 浅色卡片直接拉到纯白；深色保持原暗色卡片
+    // V4.2: cards opaque, slightly off-white in Light to live on the deeper page
     return m_mode == Light
-        ? QStringLiteral("rgba(255, 255, 255, 1.0)")
-        : QStringLiteral("rgba(46, 44, 38, 1.0)");
+        ? QStringLiteral("rgba(250, 246, 238, 1.0)")
+        : QStringLiteral("rgba(42, 40, 38, 1.0)");
 }
 
 QString Theme::cardBgHoverRgba() const {
     return m_mode == Light
-        ? QStringLiteral("rgba(248, 244, 237, 1.0)")
-        : QStringLiteral("rgba(58, 54, 46, 1.0)");
+        ? QStringLiteral("rgba(245, 240, 230, 1.0)")
+        : QStringLiteral("rgba(52, 48, 44, 1.0)");
 }
 
 QString Theme::sidebarBgRgba() const {
-    // V4：侧栏与页面相同的纸色，靠右侧 1px 描边分隔；深色比页面略暗
     return m_mode == Light
-        ? QStringLiteral("rgba(242, 238, 229, 1.0)")
-        : QStringLiteral("rgba(34, 32, 28, 1.0)");
+        ? QStringLiteral("rgba(232, 225, 207, 1.0)")
+        : QStringLiteral("rgba(28, 27, 25, 1.0)");
 }
 
 QString Theme::componentBgRgba() const {
     return m_mode == Light
-        ? QStringLiteral("rgba(234, 229, 216, 1.0)")
+        ? QStringLiteral("rgba(222, 215, 197, 1.0)")
         : QStringLiteral("rgba(54, 50, 41, 1.0)");
 }
 
 QString Theme::strokeRgba() const {
     return m_mode == Light
-        ? QStringLiteral("rgba(60, 50, 40, 0.08)")
-        : QStringLiteral("rgba(240, 230, 210, 0.06)");
+        ? QStringLiteral("rgba(60, 50, 40, 0.09)")
+        : QStringLiteral("rgba(240, 230, 210, 0.07)");
 }
 
 QString Theme::shadowRgba() const {
     return m_mode == Light
-        ? QStringLiteral("rgba(60, 45, 30, 0.04)")
-        : QStringLiteral("rgba(0, 0, 0, 0.20)");
+        ? QStringLiteral("rgba(60, 45, 30, 0.06)")
+        : QStringLiteral("rgba(0, 0, 0, 0.24)");
 }
 
 QHash<EventColor, ColorPalette> Theme::palette() const {
@@ -139,6 +140,12 @@ QHash<EventColor, ColorPalette> Theme::palette() const {
         p[EventColor::Indigo] = {QColor("#DBD9EA"), QColor("#504878"), QColor("#A39CC2"), "Indigo"};
         p[EventColor::Purple] = {QColor("#E5D8E3"), QColor("#6B4368"), QColor("#B59AB0"), "Purple"};
         p[EventColor::Pink]   = {QColor("#F0DAD9"), QColor("#9B4D4F"), QColor("#D2A2A2"), "Pink"};
+        // V4.3 #3 — 缺失的三种颜色补齐：之前 allColors() 返 12 个但 palette() 只
+        // 定义 9 个，Brown/Gray/Cyan 查表得到 default-constructed ColorPalette → text
+        // 是无效 QColor，按钮渲染近黑或全透明，用户在编辑弹窗里完全看不见。
+        p[EventColor::Brown]  = {QColor("#E8DCC9"), QColor("#7A5430"), QColor("#C8AE85"), "Brown"};
+        p[EventColor::Gray]   = {QColor("#DCDCD6"), QColor("#5A5A55"), QColor("#A8A89E"), "Gray"};
+        p[EventColor::Cyan]   = {QColor("#D3E2E7"), QColor("#3F6C7A"), QColor("#86B3BD"), "Cyan"};
     } else {
         p[EventColor::Red]    = {QColor(184, 69, 62, 38),    QColor("#E29089"), QColor("#7A3530"), "Red"};
         p[EventColor::Orange] = {QColor(194, 112, 46, 38),   QColor("#E8B074"), QColor("#7A4A1F"), "Orange"};
@@ -149,11 +156,15 @@ QHash<EventColor, ColorPalette> Theme::palette() const {
         p[EventColor::Indigo] = {QColor(80, 72, 133, 38),    QColor("#A8A3C8"), QColor("#3D375E"), "Indigo"};
         p[EventColor::Purple] = {QColor(107, 67, 104, 38),   QColor("#BB9DB7"), QColor("#523350"), "Purple"};
         p[EventColor::Pink]   = {QColor(155, 77, 79, 38),    QColor("#D5A8A8"), QColor("#7A3A3C"), "Pink"};
+        // V4.3 #3
+        p[EventColor::Brown]  = {QColor(122, 84, 48, 38),    QColor("#D4B58A"), QColor("#5A3E22"), "Brown"};
+        p[EventColor::Gray]   = {QColor(120, 120, 115, 38),  QColor("#BFBFB6"), QColor("#4A4A45"), "Gray"};
+        p[EventColor::Cyan]   = {QColor(63, 108, 122, 38),   QColor("#8DB6C0"), QColor("#2E4F5A"), "Cyan"};
     }
     return p;
 }
 
-// ============== Global QSS (V4 typography) ==============
+// ============== Global QSS (V4.2 typography) ==============
 
 QString Theme::globalStylesheet() const {
     QString brand = this->brand().name();
@@ -170,46 +181,59 @@ QString Theme::globalStylesheet() const {
 
     QString fontFamily = FontLoader::familyChain();
 
-    // Typography hierarchy (V4 § 3.1):
-    //   page title   22px / 600 / -0.2px tracking
-    //   section      15px / 600
-    //   body         14px / 400
-    //   secondary    13px / 400
-    //   caption      12px / 400
+    // V4.2 §3 typography hierarchy (re-tuned upward — user said "整体偏小"):
+    //   page title    26px / 700
+    //   section       17px / 600
+    //   subtitle      17px / 600
+    //   body / base   15px / 400
+    //   caption       14px / 500
+    //   hint          13px / 400
     //
-    // Geometry (V4 § 6.5):
-    //   cards 12px, buttons & inputs 8px, chips 6px
+    // V4.2 §3 Item 3 — kill dashed focus rectangle on every button.
+    // V4.2 §6 — punctuation: rely on font fallback. CJK strings naturally use
+    // CJK quotation marks; English uses Latin quotes from IBM Plex Serif.
+    // V4.2 §8 — descender clipping: bump line-height across the board.
     return QString(R"(
         /* ============ Base type ============ */
         QWidget {
             color: %1;
             font-family: )" + fontFamily + R"(;
-            font-size: 14px;
+            font-size: 15px;
         }
         QLabel { background: transparent; color: %1; }
         QLabel[class="title"] {
-            font-size: 22px;
-            font-weight: 600;
+            font-size: 26px;
+            font-weight: 700;
             color: %1;
-            letter-spacing: -0.2px;
+            letter-spacing: -0.3px;
         }
         QLabel[class="section"] {
-            font-size: 15px;
+            font-size: 17px;
             font-weight: 600;
             color: %1;
+            letter-spacing: -0.1px;
         }
         QLabel[class="subtitle"] {
-            font-size: 15px;
+            font-size: 17px;
             font-weight: 600;
             color: %1;
+            letter-spacing: -0.1px;
         }
         QLabel[class="caption"] {
             color: %2;
-            font-size: 13px;
+            font-size: 14px;
+            font-weight: 500;
         }
         QLabel[class="hint"] {
             color: %6;
-            font-size: 12px;
+            font-size: 13px;
+        }
+
+        /* V4.2 #3 — global kill of the dashed focus rectangle */
+        QPushButton:focus, QToolButton:focus, QCheckBox:focus,
+        QRadioButton:focus, QLabel:focus, QListView:focus,
+        QListWidget:focus, QTreeView:focus, QFrame:focus, QWidget:focus {
+            outline: 0;
         }
 
         /* ============ Inputs ============ */
@@ -226,6 +250,7 @@ QString Theme::globalStylesheet() const {
         QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus,
         QDateTimeEdit:focus, QSpinBox:focus, QComboBox:focus {
             border: 1px solid %5;
+            outline: 0;
         }
         QLineEdit::placeholder, QPlainTextEdit::placeholder { color: %6; }
         QComboBox::drop-down {
@@ -245,6 +270,16 @@ QString Theme::globalStylesheet() const {
             outline: 0;
         }
 
+        /* SpinBox up/down buttons (used by Settings AI context) */
+        QSpinBox::up-button, QSpinBox::down-button {
+            background: transparent;
+            border: none;
+            width: 16px;
+        }
+        QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+            background: %9;
+        }
+
         /* ============ Buttons ============ */
         QPushButton {
             background-color: %4;
@@ -252,6 +287,7 @@ QString Theme::globalStylesheet() const {
             border: 1px solid %3;
             border-radius: 8px;
             padding: 6px 14px;
+            outline: 0;
         }
         QPushButton:hover { background-color: %9; }
         QPushButton:disabled {

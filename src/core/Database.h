@@ -4,6 +4,7 @@
 #include <QString>
 #include <QSqlDatabase>
 #include <QObject>
+#include <optional>
 
 namespace timemaster {
 
@@ -26,6 +27,8 @@ public:
     // ---- 事件 CRUD ----
     QList<CalendarEvent> getAllEvents();
     QList<CalendarEvent> getEventsByRange(const QDateTime &start, const QDateTime &end);
+    // V4.3 #7 — ChatPage 用：撤销删除/修改时需要先取原事件做 snapshot
+    std::optional<CalendarEvent> getEventById(const QString &id);
     bool insertEvent(const CalendarEvent &event);
     bool updateEvent(const CalendarEvent &event);
     bool deleteEvent(const QString &id);
@@ -47,6 +50,14 @@ public:
     QList<DailySummary> getDailySummaries(const QDateTime &start, const QDateTime &end);
     QList<HourlyBucket> getHourlyDistribution(const QDateTime &start, const QDateTime &end);
     int eventCountBySource(EventSource source, const QDateTime &start, const QDateTime &end);
+
+    // ---- V4.3 #7 AI 对话动作历史 ----
+    // 每次对话页面里 AI 通过审批卡执行的操作（add / delete / update）都记一条，
+    // 用于动作历史抽屉和"撤销最近操作"功能。
+    bool recordChatAction(const QString &op, const QString &eventId,
+                          const QString &snapshotJson, const QString &humanSummary);
+    QList<ChatAction> getRecentChatActions(int limit = 50);
+    bool deleteChatActionRecord(const QString &id);
 
     static QString generateId();
 

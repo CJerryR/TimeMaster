@@ -41,30 +41,51 @@ void StatsCardsWidget::setupCard(Card &card, const QString &caption, QBoxLayout 
     card.frame->setObjectName("cardFrame");
     card.frame->setFrameShape(QFrame::NoFrame);
     auto *lay = new QVBoxLayout(card.frame);
-    lay->setContentsMargins(20, 16, 20, 16);
-    lay->setSpacing(4);
+    // V4.2 #2 — vertical padding bumped so descenders ("g" in "Daily avg")
+    // don't get clipped against the bottom border.
+    lay->setContentsMargins(22, 18, 22, 20);
+    lay->setSpacing(6);
 
     card.caption = new QLabel(caption);
     card.caption->setProperty("class", "caption");
+    // V4.2 #2 — caption font set explicitly so it picks up the V4.2 size of
+    // 14px (otherwise the QSS [class="caption"] selector kicks in but the
+    // widget's preferred size is computed off the inherited 15px base font).
+    {
+        QFont cf;
+        cf.setPointSize(11);  // ~14.7px @ 96 dpi
+        cf.setWeight(QFont::Medium);
+        card.caption->setFont(cf);
+    }
+    // Give the label a tiny bit of bottom padding so the descender ("y" in
+    // "Daily" and "g" in "avg") has breathing room.
+    card.caption->setMinimumHeight(20);
     lay->addWidget(card.caption);
 
     card.value = new QLabel("—");
-    // V4 § 3.1: KPI numbers ~32px / 600 with Inter + tabular figures
+    // V4.2 §3: KPI numbers ~40px / 600 with IBM Plex Serif + tabular figures
     QFont nf;
     QString numFam = FontLoader::numericFamily();
     if (!numFam.isEmpty()) nf.setFamily(numFam);
-    nf.setPointSize(24);          // ~32px @ 96dpi
-    nf.setWeight(QFont::DemiBold); // 600
+    nf.setPointSize(30);          // ~40px @ 96dpi (up from 24 ≈ 32px)
+    nf.setWeight(QFont::DemiBold);
     nf.setStyleStrategy(QFont::PreferAntialias);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    // Tabular numerals so digits align across rows
     nf.setFeature("tnum", 1);
 #endif
     card.value->setFont(nf);
+    // V4.2 #2 — ensure descenders aren't clipped (line-height 1.25 of 40px)
+    card.value->setMinimumHeight(50);
     lay->addWidget(card.value);
 
     card.sub = new QLabel();
     card.sub->setProperty("class", "caption");
+    {
+        QFont sf;
+        sf.setPointSize(10);  // ~13px
+        card.sub->setFont(sf);
+    }
+    card.sub->setMinimumHeight(18);
     lay->addWidget(card.sub);
 
     row->addWidget(card.frame, 1);
@@ -77,12 +98,13 @@ void StatsCardsWidget::applyCardStyle(Card &card) {
                           t.strokeRgba())
                      .arg(CARD_RADIUS);
     card.frame->setStyleSheet(st);
-    card.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
+    // V4.2 #12 — dark mode KPI numbers explicitly use textPrimary (#F7F7F5),
+    // not the muted secondary color that was bleeding through before.
+    card.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;font-size:40px;font-weight:600;")
                                   .arg(t.textPrimary().name()));
-    card.caption->setStyleSheet(QString("color:%1;background:transparent;font-size:13px;")
+    card.caption->setStyleSheet(QString("color:%1;background:transparent;font-size:14px;font-weight:500;")
                                     .arg(t.textSecondary().name()));
-    card.frame->setMinimumWidth(130);
-    // V4 § 7.2 — soft drop shadow
+    card.frame->setMinimumWidth(150);
     ShadowEffect::apply(card.frame, ShadowEffect::Card, t.mode() == Theme::Dark);
 }
 
@@ -109,32 +131,32 @@ QString StatsCardsWidget::formatMinutes(qint64 min) const {
 void StatsCardsWidget::setTotal(qint64 minutes) {
     m_lastTotal = minutes;
     m_totalCard.value->setText(formatMinutes(minutes));
-    m_totalCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
+    m_totalCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;font-size:40px;font-weight:600;")
                                           .arg(Theme::instance().textPrimary().name()));
 }
 
 void StatsCardsWidget::setCount(int count) {
     m_lastCount = count;
     m_countCard.value->setText(QString::number(count));
-    m_countCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
+    m_countCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;font-size:40px;font-weight:600;")
                                           .arg(Theme::instance().textPrimary().name()));
 }
 
 void StatsCardsWidget::setDailyAvg(qint64 minutes) {
     m_lastAvg = minutes;
     m_avgCard.value->setText(formatMinutes(minutes));
-    m_avgCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
+    m_avgCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;font-size:40px;font-weight:600;")
                                         .arg(Theme::instance().textPrimary().name()));
     auto &t = Theme::instance();
     if (minutes < 60) {
         m_avgCard.sub->setText(I18n::t("kpi.avg.low"));
-        m_avgCard.sub->setStyleSheet(QString("color:%1;font-size:13px;").arg(t.textPlaceholder().name()));
+        m_avgCard.sub->setStyleSheet(QString("color:%1;font-size:14px;").arg(t.textPlaceholder().name()));
     } else if (minutes > 480) {
         m_avgCard.sub->setText(I18n::t("kpi.avg.high"));
-        m_avgCard.sub->setStyleSheet(QString("color:%1;font-size:13px;").arg(t.danger().name()));
+        m_avgCard.sub->setStyleSheet(QString("color:%1;font-size:14px;").arg(t.danger().name()));
     } else {
         m_avgCard.sub->setText(I18n::t("kpi.avg.normal"));
-        m_avgCard.sub->setStyleSheet(QString("color:%1;font-size:13px;").arg(t.success().name()));
+        m_avgCard.sub->setStyleSheet(QString("color:%1;font-size:14px;").arg(t.success().name()));
     }
 }
 
@@ -142,14 +164,14 @@ void StatsCardsWidget::setPeakDay(const QDate &date) {
     m_lastPeak = date;
     if (!date.isValid()) {
         m_peakCard.value->setText("—");
-        m_peakCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;")
+        m_peakCard.value->setStyleSheet(QString("color:%1;background:transparent;letter-spacing:-0.5px;font-size:40px;font-weight:600;")
                                               .arg(Theme::instance().textPrimary().name()));
         m_peakCard.sub->setText("");
         return;
     }
     auto &t = Theme::instance();
     m_peakCard.value->setText(QString("%1/%2").arg(date.month()).arg(date.day()));
-    m_peakCard.value->setStyleSheet(QString("color:%1;background:transparent;font-weight:600;letter-spacing:-0.5px;")
+    m_peakCard.value->setStyleSheet(QString("color:%1;background:transparent;font-weight:600;letter-spacing:-0.5px;font-size:40px;")
                                         .arg(t.brand().name()));
 
     QString sub;
@@ -165,7 +187,7 @@ void StatsCardsWidget::setPeakDay(const QDate &date) {
         sub = QStringLiteral("周") + zh.value((dow - 1 + 7) % 7);
     }
     m_peakCard.sub->setText(sub);
-    m_peakCard.sub->setStyleSheet(QString("color:%1;font-size:13px;").arg(t.textSecondary().name()));
+    m_peakCard.sub->setStyleSheet(QString("color:%1;font-size:14px;").arg(t.textSecondary().name()));
 }
 
 } // namespace timemaster

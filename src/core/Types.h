@@ -76,6 +76,17 @@ struct AiBatchInfo {
     int aliveCount = 0;       // 当前还存在的事件数
 };
 
+// V4.3 #7 — 聊天页面通过审批卡执行的一次操作（增/删/改）
+// snapshotJson 存事件序列化结果，方便撤销时复原。
+struct ChatAction {
+    QString id;
+    QString op;               // "add" | "delete" | "update"
+    QString eventId;
+    QString snapshotJson;     // 完整事件 JSON（用于撤销）
+    QString humanSummary;     // "Added: 项目评审 · 11/15 14:00"
+    QDateTime createdAt;
+};
+
 struct CategoryStat {
     EventCategory category;
     qint64 totalMinutes = 0;
@@ -123,3 +134,4 @@ EventColor categoryDefaultColor(EventCategory c);
 
 Q_DECLARE_METATYPE(timemaster::CalendarEvent)
 Q_DECLARE_METATYPE(timemaster::AiBatchInfo)
+Q_DECLARE_METATYPE(timemaster::ChatAction)

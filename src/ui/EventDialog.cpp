@@ -1,5 +1,6 @@
 #include "EventDialog.h"
 #include "Theme.h"
+#include "widgets/FlowLayout.h"
 #include "../core/Database.h"
 #include "../core/I18n.h"
 
@@ -21,9 +22,12 @@
 namespace timemaster {
 
 EventDialog::EventDialog(QWidget *parent) : QDialog(parent) {
+    setObjectName("EventDialog");          // V4.3 #2 — QSS 钩子让对话框背景跟主题
     setWindowTitle(I18n::t("event.title"));
     setModal(true);
-    setMinimumSize(560, 660);
+    // V4.3 #1 — bumped from 560x660. 字号长大后原来的最小尺寸把控件挤在一起，
+    // 在某些 DPI 下出现 caption 与 input 文本重叠。
+    setMinimumSize(600, 720);
     buildUi();
     applyTheme();
     connect(&Theme::instance(), &Theme::changed, this, &EventDialog::applyTheme);
@@ -32,21 +36,24 @@ EventDialog::EventDialog(QWidget *parent) : QDialog(parent) {
 void EventDialog::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(28, 24, 28, 20);
-    root->setSpacing(18);
+    root->setSpacing(16);                  // V4.3 #1 — 从 18 略调到 16，整体均衡
 
-    auto *titleLabel = new QLabel(I18n::t("event.title"));
-    titleLabel->setProperty("class", "title");
-    root->addWidget(titleLabel);
+    m_titleLabel = new QLabel(I18n::t("event.title"));
+    m_titleLabel->setObjectName("EventDialogTitle");
+    m_titleLabel->setProperty("class", "title");
+    root->addWidget(m_titleLabel);
 
     // 标题
     {
         auto *box = new QVBoxLayout();
+        box->setSpacing(6);                // V4.3 #1 — caption 与 input 之间留 6
         auto *l = new QLabel(I18n::t("event.field.title"));
         l->setProperty("class", "caption");
+        l->setMinimumHeight(22);          // V4.3 #1 — caption 不再被 descender 压塌
         box->addWidget(l);
         m_titleEdit = new QLineEdit();
         m_titleEdit->setPlaceholderText(I18n::t("event.title_ph"));
-        m_titleEdit->setMinimumHeight(36);
+        m_titleEdit->setMinimumHeight(40);  // V4.3 #1 — 36 → 40
         box->addWidget(m_titleEdit);
         root->addLayout(box);
     }
@@ -54,23 +61,25 @@ void EventDialog::buildUi() {
     // 时间行
     {
         auto *grid = new QGridLayout();
-        grid->setHorizontalSpacing(12);
-        grid->setVerticalSpacing(8);
+        grid->setHorizontalSpacing(14);
+        grid->setVerticalSpacing(12);     // V4.3 #1 — 8 → 12，避免行间重叠
         auto *lStart = new QLabel(I18n::t("event.start"));
         lStart->setProperty("class", "caption");
+        lStart->setMinimumHeight(22);
         auto *lEnd = new QLabel(I18n::t("event.end"));
         lEnd->setProperty("class", "caption");
+        lEnd->setMinimumHeight(22);
         grid->addWidget(lStart, 0, 0);
         grid->addWidget(lEnd, 0, 1);
 
         m_startEdit = new QDateTimeEdit();
         m_startEdit->setCalendarPopup(true);
         m_startEdit->setDisplayFormat("yyyy-MM-dd HH:mm");
-        m_startEdit->setMinimumHeight(36);
+        m_startEdit->setMinimumHeight(40);
         m_endEdit = new QDateTimeEdit();
         m_endEdit->setCalendarPopup(true);
         m_endEdit->setDisplayFormat("yyyy-MM-dd HH:mm");
-        m_endEdit->setMinimumHeight(36);
+        m_endEdit->setMinimumHeight(40);
         grid->addWidget(m_startEdit, 1, 0);
         grid->addWidget(m_endEdit, 1, 1);
 
@@ -84,33 +93,42 @@ void EventDialog::buildUi() {
         root->addLayout(grid);
     }
 
-    // 类别
+    // 类别 (V4.3 #4 — FlowLayout 换行)
     {
+        auto *box = new QVBoxLayout();
+        box->setSpacing(6);
         auto *l = new QLabel(I18n::t("event.category"));
         l->setProperty("class", "caption");
-        root->addWidget(l);
+        l->setMinimumHeight(22);
+        box->addWidget(l);
 
-        auto *row = new QHBoxLayout();
-        row->setSpacing(6);
+        // FlowLayout 自动换行；不再用 QHBoxLayout 强排一行。
+        auto *flowHost = new QWidget;
+        flowHost->setObjectName("EventDialogCategoryHost");
+        auto *flow = new FlowLayout(flowHost, 0, 6, 6);
         auto cats = allCategories();
         for (int i = 0; i < cats.size(); ++i) {
             auto *btn = new QPushButton(categoryLabel(cats[i]));
             btn->setCheckable(true);
             btn->setCursor(Qt::PointingHandCursor);
-            btn->setMinimumHeight(30);
+            btn->setMinimumHeight(32);
+            btn->setFocusPolicy(Qt::NoFocus);
             connect(btn, &QPushButton::clicked, this, [this, i] { onCategoryClicked(i); });
             m_categoryButtons.append(btn);
-            row->addWidget(btn);
+            flow->addWidget(btn);
         }
-        row->addStretch();
-        root->addLayout(row);
+        box->addWidget(flowHost);
+        root->addLayout(box);
     }
 
     // 优先级
     {
+        auto *box = new QVBoxLayout();
+        box->setSpacing(6);
         auto *l = new QLabel(I18n::t("event.priority"));
         l->setProperty("class", "caption");
-        root->addWidget(l);
+        l->setMinimumHeight(22);
+        box->addWidget(l);
 
         auto *row = new QHBoxLayout();
         row->setSpacing(6);
@@ -119,59 +137,67 @@ void EventDialog::buildUi() {
             auto *btn = new QPushButton(priorityLabel(prios[i]));
             btn->setCheckable(true);
             btn->setCursor(Qt::PointingHandCursor);
-            btn->setMinimumHeight(30);
-            btn->setMinimumWidth(80);
+            btn->setMinimumHeight(32);
+            btn->setMinimumWidth(86);
+            btn->setFocusPolicy(Qt::NoFocus);
             connect(btn, &QPushButton::clicked, this, [this, i] { onPriorityClicked(i); });
             m_priorityButtons.append(btn);
             row->addWidget(btn);
         }
         row->addStretch();
-        root->addLayout(row);
+        box->addLayout(row);
+        root->addLayout(box);
     }
 
-    // 颜色
+    // 颜色 (V4.3 #3 — 12 颜色全部可见；FlowLayout 自动换行)
     {
+        auto *box = new QVBoxLayout();
+        box->setSpacing(6);
         auto *l = new QLabel(I18n::t("event.color"));
         l->setProperty("class", "caption");
-        root->addWidget(l);
+        l->setMinimumHeight(22);
+        box->addWidget(l);
 
-        auto *row = new QHBoxLayout();
-        row->setSpacing(8);
+        auto *flowHost = new QWidget;
+        auto *flow = new FlowLayout(flowHost, 0, 8, 8);
         auto colors = allColors();
         for (int i = 0; i < colors.size(); ++i) {
             auto *btn = new QPushButton();
             btn->setCheckable(true);
-            btn->setFixedSize(28, 28);
+            btn->setFixedSize(30, 30);
             btn->setCursor(Qt::PointingHandCursor);
+            btn->setFocusPolicy(Qt::NoFocus);
             connect(btn, &QPushButton::clicked, this, [this, i] { onColorClicked(i); });
             m_colorButtons.append(btn);
-            row->addWidget(btn);
+            flow->addWidget(btn);
         }
-        row->addStretch();
-        root->addLayout(row);
+        box->addWidget(flowHost);
+        root->addLayout(box);
     }
 
     // 地点 + 提醒
     {
         auto *grid = new QGridLayout();
-        grid->setHorizontalSpacing(12);
-        grid->setVerticalSpacing(8);
+        grid->setHorizontalSpacing(14);
+        grid->setVerticalSpacing(12);
 
         auto *lLoc = new QLabel(I18n::t("event.location"));
         lLoc->setProperty("class", "caption");
+        lLoc->setMinimumHeight(22);
         m_locationEdit = new QLineEdit();
         m_locationEdit->setPlaceholderText(I18n::t("event.location_ph"));
-        m_locationEdit->setMinimumHeight(36);
+        m_locationEdit->setMinimumHeight(40);
         grid->addWidget(lLoc, 0, 0);
         grid->addWidget(m_locationEdit, 1, 0);
 
         auto *lRem = new QLabel(I18n::t("event.reminder"));
         lRem->setProperty("class", "caption");
+        lRem->setMinimumHeight(22);
         m_reminderSpin = new QSpinBox();
         m_reminderSpin->setRange(0, 1440);
         m_reminderSpin->setSingleStep(5);
         m_reminderSpin->setValue(15);
-        m_reminderSpin->setMinimumHeight(36);
+        m_reminderSpin->setMinimumHeight(40);
         grid->addWidget(lRem, 0, 1);
         grid->addWidget(m_reminderSpin, 1, 1);
 
@@ -180,13 +206,18 @@ void EventDialog::buildUi() {
 
     // 备注
     {
+        auto *box = new QVBoxLayout();
+        box->setSpacing(6);
         auto *l = new QLabel(I18n::t("event.notes"));
         l->setProperty("class", "caption");
-        root->addWidget(l);
+        l->setMinimumHeight(22);
+        box->addWidget(l);
         m_descriptionEdit = new QPlainTextEdit();
         m_descriptionEdit->setPlaceholderText(I18n::t("event.notes_ph"));
-        m_descriptionEdit->setMaximumHeight(80);
-        root->addWidget(m_descriptionEdit);
+        m_descriptionEdit->setMaximumHeight(90);
+        m_descriptionEdit->setMinimumHeight(64);
+        box->addWidget(m_descriptionEdit);
+        root->addLayout(box);
     }
 
     root->addStretch(1);
@@ -195,21 +226,24 @@ void EventDialog::buildUi() {
         auto *row = new QHBoxLayout();
         m_deleteButton = new QPushButton(I18n::t("event.delete"));
         m_deleteButton->setProperty("class", "ghost");
-        m_deleteButton->setMinimumHeight(36);
+        m_deleteButton->setMinimumHeight(38);
         m_deleteButton->setVisible(false);
+        m_deleteButton->setFocusPolicy(Qt::NoFocus);
         connect(m_deleteButton, &QPushButton::clicked, this, &EventDialog::onDeleteClicked);
         row->addWidget(m_deleteButton);
         row->addStretch();
 
         m_cancelButton = new QPushButton(I18n::t("event.cancel"));
-        m_cancelButton->setMinimumSize(86, 36);
+        m_cancelButton->setMinimumSize(92, 38);
+        m_cancelButton->setFocusPolicy(Qt::NoFocus);
         connect(m_cancelButton, &QPushButton::clicked, this, &QDialog::reject);
         row->addWidget(m_cancelButton);
 
         m_submitButton = new QPushButton(I18n::t("event.save"));
         m_submitButton->setProperty("class", "primary");
-        m_submitButton->setMinimumSize(86, 36);
+        m_submitButton->setMinimumSize(92, 38);
         m_submitButton->setDefault(true);
+        m_submitButton->setFocusPolicy(Qt::NoFocus);
         connect(m_submitButton, &QPushButton::clicked, this, &EventDialog::onSubmit);
         row->addWidget(m_submitButton);
 
@@ -218,7 +252,15 @@ void EventDialog::buildUi() {
 }
 
 void EventDialog::applyTheme() {
-    setStyleSheet(Theme::instance().globalStylesheet());
+    auto &t = Theme::instance();
+    // V4.3 #2 — 显式给 QDialog 上背景色，不再依赖系统 palette；同时给 title
+    // 上 textPrimary（不被 globalStylesheet 的 class="title" 选择器漏掉）。
+    setStyleSheet(t.globalStylesheet() + QString(
+        "QDialog#EventDialog { background-color: %1; }"
+        "QLabel#EventDialogTitle { color: %2; background: transparent; }"
+        "QWidget#EventDialogCategoryHost { background: transparent; }"
+    ).arg(t.bgPage().name(), t.textPrimary().name()));
+
     refreshCategoryButtons();
     refreshPriorityButtons();
     refreshColorButtons();
@@ -329,13 +371,13 @@ void EventDialog::refreshCategoryButtons() {
         btn->setChecked(active);
         if (active) {
             btn->setStyleSheet(QString(
-                "QPushButton{background:%1;color:%2;border:1px solid %3;border-radius:15px;"
-                "padding:4px 14px;font-weight:600;}"
+                "QPushButton{background:%1;color:%2;border:1px solid %3;border-radius:16px;"
+                "padding:5px 16px;font-weight:600;outline:0;}"
             ).arg(brandLight, theme.brand().name(), theme.brand().name()));
         } else {
             btn->setStyleSheet(QString(
                 "QPushButton{background:transparent;color:%1;border:1px solid %2;"
-                "border-radius:15px;padding:4px 14px;}"
+                "border-radius:16px;padding:5px 16px;outline:0;}"
                 "QPushButton:hover{background:%3;}"
             ).arg(theme.textSecondary().name(),
                   theme.stroke().name(),
@@ -353,13 +395,13 @@ void EventDialog::refreshPriorityButtons() {
         btn->setChecked(active);
         if (active) {
             btn->setStyleSheet(QString(
-                "QPushButton{background:%1;color:white;border:none;border-radius:15px;"
-                "padding:4px 18px;font-weight:600;}"
+                "QPushButton{background:%1;color:white;border:none;border-radius:16px;"
+                "padding:5px 20px;font-weight:600;outline:0;}"
             ).arg(tints[i]));
         } else {
             btn->setStyleSheet(QString(
                 "QPushButton{background:transparent;color:%1;border:1px solid %2;"
-                "border-radius:15px;padding:4px 18px;}"
+                "border-radius:16px;padding:5px 20px;outline:0;}"
                 "QPushButton:hover{background:%3;}"
             ).arg(Theme::instance().textSecondary().name(),
                   Theme::instance().stroke().name(),
@@ -374,14 +416,16 @@ void EventDialog::refreshColorButtons() {
     for (int i = 0; i < m_colorButtons.size(); ++i) {
         auto *btn = m_colorButtons[i];
         bool active = (cols[i] == m_selectedColor);
+        // V4.3 #3 — pal[cols[i]].text 现在对 12 种颜色都是有效色（Theme.cpp 已补齐）。
         QColor c = pal[cols[i]].text;
+        if (!c.isValid()) c = QColor("#888888");   // 兜底
         if (active) {
             btn->setStyleSheet(QString(
-                "QPushButton{background:%1;border:3px solid %2;border-radius:14px;}"
+                "QPushButton{background:%1;border:3px solid %2;border-radius:15px;outline:0;}"
             ).arg(c.name(), Theme::instance().textPrimary().name()));
         } else {
             btn->setStyleSheet(QString(
-                "QPushButton{background:%1;border:1px solid %2;border-radius:14px;}"
+                "QPushButton{background:%1;border:1px solid %2;border-radius:15px;outline:0;}"
                 "QPushButton:hover{border:2px solid %3;}"
             ).arg(c.name(),
                   Theme::instance().stroke().name(),

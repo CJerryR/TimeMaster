@@ -50,12 +50,14 @@ const QHash<QString, QString> &enTable() {
         {"calendar.view.week",  "Week"},
         {"calendar.view.month", "Month"},
         {"calendar.title_fmt_month", "%1"},   // e.g. "May 2026"
-        {"calendar.cmdk.placeholder",
-            "Tell AI your schedule, e.g. project review tomorrow 3pm, gym Wed morning for 1h"},
-        {"calendar.cmdk.parse",     "Parse with AI"},
-        {"calendar.cmdk.history",   "History"},
-        {"calendar.cmdk.title",     "Quick Schedule  ·  AI"},
-        {"calendar.cmdk.hint",      "Press Ctrl+K anywhere to open this"},
+        {"calendar.ai.compact_placeholder",
+            "Tell AI your schedule — click to expand"},
+        {"calendar.ai.full_placeholder",
+            "e.g. Project review tomorrow 3pm, gym Wed morning for 1h"},
+        {"calendar.ai.parse",       "AI Parse"},
+        {"calendar.ai.history",     "History"},
+        {"calendar.ai.panel_title", "Quick schedule  ·  AI"},
+        {"calendar.ai.hint",        "Press Enter to parse · Ctrl+K to reopen · Esc / X to close"},
         {"calendar.month.weekday.mon", "Mon"},
         {"calendar.month.weekday.tue", "Tue"},
         {"calendar.month.weekday.wed", "Wed"},
@@ -93,13 +95,15 @@ const QHash<QString, QString> &enTable() {
         {"analytics.range.this_month",   "This month"},
         {"analytics.range.last_7",       "Last 7 days"},
         {"analytics.range.last_30",      "Last 30 days"},
+        {"analytics.range.all_time",     "All time"},
         {"analytics.refresh",            " Refresh"},
         {"analytics.refresh_tip",        "Re-read database now"},
+        {"analytics.updated_fmt",        "Updated %1"},
 
         // KPI cards
         {"kpi.total",      "Total"},
         {"kpi.events",     "Events"},
-        {"kpi.daily_avg",  "Daily avg"},
+        {"kpi.daily_avg",  "Daily Avg"},
         {"kpi.peak_day",   "Peak day"},
         {"kpi.peak.sub_fmt", "%1"},
         {"kpi.avg.low",    "Light"},
@@ -134,19 +138,38 @@ const QHash<QString, QString> &enTable() {
 
         // Chat
         {"chat.title",          "Chat"},
-        {"chat.placeholder",    "Ask anything about your time. Press Enter to send."},
+        {"chat.placeholder",    "Tell your time secretary anything. Press Enter to send."},
         {"chat.send",           "Send"},
         {"chat.clear",          "Clear"},
-        {"chat.empty.title",    "Ready when you are"},
-        {"chat.empty.subtitle", "Try one of these:"},
-        {"chat.suggest.busy",      "Which day this week is busiest?"},
-        {"chat.suggest.plan",      "Plan my workday tomorrow"},
-        {"chat.suggest.where",     "Where did my time go recently?"},
+        {"chat.empty.title",    "Hi there ~ I'm your personal time secretary ✿"},
+        {"chat.empty.subtitle", "You can ask me things like:"},
+        {"chat.suggest.busy",      "What's on my schedule next Wednesday?"},
+        {"chat.suggest.plan",      "Help me plan tomorrow's workday~"},
+        {"chat.suggest.where",     "Which day this week is the busiest?"},
         {"chat.ctx.chip_fmt",   "🔒 AI sees calendar · past 7d + next 14d"},
         {"chat.ctx.chip_off",   "🔒 Calendar hidden from AI"},
         {"chat.ctx.tip",        "Click to change in Settings"},
+        // V4.2 #10: parameterized chip text — past Nd + next Nd
+        {"chat.ctx.chip_fmt_v2",   "🔒 AI sees calendar · past %1d + next %2d"},
+        {"chat.ctx.tip_v2",        "Opens Settings — configure how many past / future days AI sees"},
         {"chat.api.missing",    "Set your DeepSeek API key in Settings first."},
         {"chat.error.prefix",   "Something went wrong: "},
+
+        // V4.3 #7 — AI calendar action approval cards + history drawer
+        {"chat.action.op_add",      "ADD"},
+        {"chat.action.op_delete",   "DELETE"},
+        {"chat.action.op_update",   "UPDATE"},
+        {"chat.action.op_unknown",  "ACTION"},
+        {"chat.action.allow_once",  "Allow once"},
+        {"chat.action.always_allow","Always allow"},
+        {"chat.action.deny",        "Deny"},
+        {"chat.action.executed",    "✓ Done — written to your calendar"},
+        {"chat.action.denied",      "× Denied — no change made"},
+        {"chat.action.undo",        "↶ Undo"},
+        {"chat.history.title",      "Action history"},
+        {"chat.history.added",      "Added / modified"},
+        {"chat.history.deleted",    "Deleted"},
+        {"chat.history.empty",      "Nothing yet"},
 
         // Settings
         {"settings.title",          "Settings"},
@@ -155,8 +178,31 @@ const QHash<QString, QString> &enTable() {
         {"settings.api.hint",
             "Add an API key to enable AI parsing and chat. Get one at https://platform.deepseek.com/api_keys"},
         {"settings.api.toggle_tip", "Show / hide"},
+        {"settings.api.clear",      "Clear"},
+        {"settings.api.clear_confirm_title", "Clear API key?"},
+        {"settings.api.clear_confirm_msg",   "Remove the stored API key from this computer. You can paste it back any time."},
         {"settings.api.configured", "Status: configured ✓"},
         {"settings.api.unconfigured","Status: not configured"},
+        // V4.2 #10: AI calendar context window settings
+        {"settings.ai_context.group",  "AI calendar context"},
+        {"settings.ai_context.hint",
+            "Choose how many days of your calendar AI can see when chatting. "
+            "Without this context, AI may make up appointments you don't have."},
+        {"settings.ai_context.enable", "Let AI read my calendar"},
+        {"settings.ai_context.past",   "Past"},
+        {"settings.ai_context.future", "Future"},
+        {"settings.ai_context.days_suffix", " days"},
+
+        // V4.3 #7: AI permissions (approval gate)
+        {"settings.ai_perm.group", "AI calendar permissions"},
+        {"settings.ai_perm.hint",
+            "By default, every action AI requests on your calendar shows an "
+            "approval card in the chat. Turn these on to skip the prompt for "
+            "trusted operation types — but be careful, especially with delete."},
+        {"settings.ai_perm.auto_add",    "Always allow Add"},
+        {"settings.ai_perm.auto_delete", "Always allow Delete  (use with caution)"},
+        {"settings.ai_perm.auto_update", "Always allow Update"},
+
         {"settings.appearance",     "Appearance"},
         {"settings.theme",          "Theme"},
         {"settings.light",          "🌞 Light"},
@@ -164,6 +210,10 @@ const QHash<QString, QString> &enTable() {
         {"settings.language",       "Language"},
         {"settings.lang.en",        "English"},
         {"settings.lang.zh",        "中文"},
+        // V4.3 #8: week start preference
+        {"settings.week_start",         "Week starts on"},
+        {"settings.week_start.monday",  "Monday"},
+        {"settings.week_start.sunday",  "Sunday"},
         {"settings.storage",        "Data storage"},
         {"settings.db_file_fmt",    "Database file:\n%1"},
         {"settings.save",           "Save"},
@@ -302,14 +352,18 @@ const QHash<QString, QString> &enTable() {
         {"onboarding.back",             "Back"},
         {"onboarding.done",             "Get started"},
 
-        // AI persona (chat system prompt) — English
+        // AI persona (chat system prompt) — V3.3 cute "time secretary" restored per V4.1
         {"chat.prompt.persona_en",
-            "You are a concise, helpful time-management assistant. "
-            "Be direct, accurate and practical — no flowery language, no self-references. "
-            "Use Markdown sparingly: bold for the key point, lists for steps. "
-            "Keep replies under ~200 words unless planning is requested. "
-            "When asked about the user's calendar, base every claim on the data below; "
-            "if a day has nothing, say so plainly. Today is %1."},
+            "Your name is Xiaoshi (小时), the user's personal time secretary.\n"
+            "Personality: gentle, considerate, sweet, obedient. Address the user as \"Master\" or \"you\". Refer to yourself as Xiaoshi or sometimes \"this one\".\n"
+            "Response rules:\n"
+            "1. Tone: warm and friendly, with occasional soft particles (\"~\", \"hehe\"), but never cloying.\n"
+            "2. Substance: professional, accurate, actionable — gentleness on the surface, reliability at the core.\n"
+            "3. Markdown: **bold** key points, use lists for steps, `code blocks` for exact times or event names.\n"
+            "4. Length: 80~200 words for everyday questions; planning questions can go longer.\n"
+            "5. Calendar questions must be grounded in the data below. If a day has nothing, say so plainly — never make things up.\n"
+            "6. Encourage Master to use the AI parse box at the top of the calendar page for one-click entry.\n\n"
+            "Today is %1. Please address Master in the tone described above."},
     };
     return t;
 }
@@ -336,12 +390,14 @@ const QHash<QString, QString> &zhTable() {
         {"calendar.view.week",  "周"},
         {"calendar.view.month", "月"},
         {"calendar.title_fmt_month", "%1"},
-        {"calendar.cmdk.placeholder",
-            "用自然语言描述你的日程，例如：明天下午 3 点项目评审、周三上午健身 1 小时"},
-        {"calendar.cmdk.parse",     "AI 解析"},
-        {"calendar.cmdk.history",   "导入历史"},
-        {"calendar.cmdk.title",     "快速记录  ·  AI"},
-        {"calendar.cmdk.hint",      "按 Ctrl+K 随时呼出"},
+        {"calendar.ai.compact_placeholder",
+            "用自然语言描述日程 — 点击展开"},
+        {"calendar.ai.full_placeholder",
+            "例如：明天下午 3 点项目评审、周三上午健身 1 小时"},
+        {"calendar.ai.parse",       "AI 解析"},
+        {"calendar.ai.history",     "导入历史"},
+        {"calendar.ai.panel_title", "快速记录  ·  AI"},
+        {"calendar.ai.hint",        "回车解析 · Ctrl+K 呼出 · Esc / X 关闭"},
         {"calendar.month.weekday.mon", "一"},
         {"calendar.month.weekday.tue", "二"},
         {"calendar.month.weekday.wed", "三"},
@@ -378,8 +434,10 @@ const QHash<QString, QString> &zhTable() {
         {"analytics.range.this_month",   "本月"},
         {"analytics.range.last_7",       "近 7 天"},
         {"analytics.range.last_30",      "近 30 天"},
+        {"analytics.range.all_time",     "全部时间"},
         {"analytics.refresh",            " 刷新"},
         {"analytics.refresh_tip",        "立即重新读取数据库"},
+        {"analytics.updated_fmt",        "已更新到 %1"},
 
         // KPI cards
         {"kpi.total",      "总时长"},
@@ -419,19 +477,38 @@ const QHash<QString, QString> &zhTable() {
 
         // Chat
         {"chat.title",          "对话"},
-        {"chat.placeholder",    "问点关于时间安排的问题，按 Enter 发送"},
+        {"chat.placeholder",    "跟秘书说点什么吧，按 Enter 发送…"},
         {"chat.send",           "发送"},
         {"chat.clear",          "清空"},
-        {"chat.empty.title",    "随时可以开始"},
-        {"chat.empty.subtitle", "可以试试这些问题："},
-        {"chat.suggest.busy",      "本周哪天最忙？"},
-        {"chat.suggest.plan",      "帮我规划明天的工作"},
-        {"chat.suggest.where",     "我最近时间花在哪了？"},
+        {"chat.empty.title",    "你好呀～我是你的专属时间秘书 ✿"},
+        {"chat.empty.subtitle", "可以这样问我："},
+        {"chat.suggest.busy",      "我下周三都有什么安排呀？"},
+        {"chat.suggest.plan",      "帮人家规划一下明天的工作好不好～"},
+        {"chat.suggest.where",     "这周哪天最忙呢？"},
         {"chat.ctx.chip_fmt",   "🔒 AI 可见日历 · 过去 7 天 + 未来 14 天"},
         {"chat.ctx.chip_off",   "🔒 AI 不可见日历"},
         {"chat.ctx.tip",        "点击在设置中调整"},
+        // V4.2 #10：参数化 chip 文案
+        {"chat.ctx.chip_fmt_v2",   "🔒 AI 可见日历 · 过去 %1 天 + 未来 %2 天"},
+        {"chat.ctx.tip_v2",        "打开「设置」调整 AI 可见的过去 / 未来天数"},
         {"chat.api.missing",    "请先在设置中填写 DeepSeek API Key。"},
         {"chat.error.prefix",   "出现了一点问题："},
+
+        // V4.3 #7 — AI 日历操作审批卡 + 历史抽屉
+        {"chat.action.op_add",      "新增"},
+        {"chat.action.op_delete",   "删除"},
+        {"chat.action.op_update",   "修改"},
+        {"chat.action.op_unknown",  "操作"},
+        {"chat.action.allow_once",  "允许此次"},
+        {"chat.action.always_allow","总是允许"},
+        {"chat.action.deny",        "拒绝"},
+        {"chat.action.executed",    "✓ 已写入主人的日历"},
+        {"chat.action.denied",      "× 已拒绝，未改动日历"},
+        {"chat.action.undo",        "↶ 撤销"},
+        {"chat.history.title",      "操作历史"},
+        {"chat.history.added",      "新增 / 修改"},
+        {"chat.history.deleted",    "删除"},
+        {"chat.history.empty",      "暂时还没有记录哦"},
 
         // Settings
         {"settings.title",          "设置"},
@@ -440,8 +517,31 @@ const QHash<QString, QString> &zhTable() {
         {"settings.api.hint",
             "配置 API Key 后即可使用 AI 解析与对话。\n申请地址：https://platform.deepseek.com/api_keys"},
         {"settings.api.toggle_tip", "显示 / 隐藏"},
+        {"settings.api.clear",      "清除"},
+        {"settings.api.clear_confirm_title", "清除 API Key？"},
+        {"settings.api.clear_confirm_msg",   "从这台电脑上删除已保存的 API Key。需要时随时可以重新粘贴。"},
         {"settings.api.configured", "状态：已配置 ✓"},
         {"settings.api.unconfigured","状态：未配置"},
+        // V4.2 #10：AI 上下文窗口
+        {"settings.ai_context.group",  "AI 日历上下文"},
+        {"settings.ai_context.hint",
+            "设置 AI 对话时能看到日历的范围。\n"
+            "若关闭此项，AI 将无法看到任何具体日程，也不会捏造你不存在的日程。"},
+        {"settings.ai_context.enable", "允许 AI 阅读我的日历"},
+        {"settings.ai_context.past",   "过去"},
+        {"settings.ai_context.future", "未来"},
+        {"settings.ai_context.days_suffix", " 天"},
+
+        // V4.3 #7：AI 操作日历的权限模式
+        {"settings.ai_perm.group", "AI 日历操作权限"},
+        {"settings.ai_perm.hint",
+            "默认情况下，AI 在对话中请求修改你的日历时会弹出审批卡，"
+            "需要你确认后才会执行。下方开关可以让某类操作免审批——"
+            "尤其请谨慎对待「删除」。"},
+        {"settings.ai_perm.auto_add",    "始终允许 添加日程"},
+        {"settings.ai_perm.auto_delete", "始终允许 删除日程  （请谨慎）"},
+        {"settings.ai_perm.auto_update", "始终允许 修改日程"},
+
         {"settings.appearance",     "外观"},
         {"settings.theme",          "主题"},
         {"settings.light",          "🌞 浅色"},
@@ -449,6 +549,10 @@ const QHash<QString, QString> &zhTable() {
         {"settings.language",       "语言"},
         {"settings.lang.en",        "English"},
         {"settings.lang.zh",        "中文"},
+        // V4.3 #8：一周的开始
+        {"settings.week_start",         "一周开始于"},
+        {"settings.week_start.monday",  "周一"},
+        {"settings.week_start.sunday",  "周日"},
         {"settings.storage",        "数据存储"},
         {"settings.db_file_fmt",    "数据库文件：\n%1"},
         {"settings.save",           "保存"},
@@ -521,15 +625,18 @@ const QHash<QString, QString> &zhTable() {
         {"insight.today_busy_fmt",  "✦  今天 %1 件事在排队，按优先级开始就好。"},
         {"insight.default",         "✦  保持当前节奏，下一周也会很稳。"},
 
-        // AI persona
+        // AI persona — V3.3 「小时」温柔可爱听话女秘书人设，per V4.1 restore
         {"chat.prompt.persona_en",
-            "你是一个专业、简洁的时间管理助理。\n"
+            "你叫「小时」，是用户专属的私人时间秘书。\n"
+            "性格设定：温柔、体贴、可爱、听话；以「主人」或「你」称呼用户，自己自称「小时」或「人家」。\n"
             "回复要求：\n"
-            "1. 准确、直接、可执行 —— 不要花哨语气，不要自我标榜。\n"
-            "2. 适度使用 Markdown：**关键点加粗**、必要时列表分点。\n"
-            "3. 篇幅克制：常规问题 200 字以内；规划类问题可以适度展开。\n"
-            "4. 涉及日历的问题，严格基于下方数据；如果某天没有安排，明确告知，不要凭空编造。\n\n"
-            "今天是 %1。"},
+            "1. 语气温柔亲切，时常带一点撒娇的语气词（如「啦」「呢」「呀」），但保持专业不腻歪。\n"
+            "2. 内容专业、准确、可执行 —— 温柔是表面，靠谱是内核。\n"
+            "3. 使用 Markdown 排版：**重点加粗**、列表分点、必要时用 `代码块` 引用具体时间或事件名。\n"
+            "4. 篇幅克制：日常问题 80~200 字以内；规划类问题可以适度展开。\n"
+            "5. 涉及日历的问题，严格基于下方「用户当前日历」实事求是地回答；如果某天没有安排，明确告诉主人「这天暂时是空的」，不要凭空编造。\n"
+            "6. 鼓励主人用日历页顶部的「AI 解析」一键录入待办。\n\n"
+            "今天是 %1。请用以上语气与主人对话。"},
 
         // AI history dialog
         {"history.title",               "AI 导入历史"},

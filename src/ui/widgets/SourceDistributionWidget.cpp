@@ -31,7 +31,7 @@ void SourceDistributionWidget::setSources(int manual, int ai, int imported) {
 // ---- SourceBar ----
 
 SourceBar::SourceBar(QWidget *parent) : QWidget(parent) {
-    setMinimumHeight(40);
+    setMinimumHeight(72);   // V4.2: was 40, room for bar + legend below
 }
 
 void SourceBar::setSources(int manual, int ai, int imported) {
@@ -77,10 +77,10 @@ void SourceBar::paintEvent(QPaintEvent *) {
         drawSegment(p, x, y, wImport, h, cImport, false);
 
     QFont f = font();
-    f.setPointSize(10);
+    f.setPointSize(11);   // V4.2: was 10, slightly bigger for legend area
     p.setFont(f);
 
-    int legendY = y + h + 12;
+    int legendY = y + h + 14;
     int legendX = 10;
     drawLegend(p, legendX, legendY, cManual,
         timemaster::I18n::t("widget.source.manual_fmt").arg(int(rManual * 100)));
@@ -97,13 +97,20 @@ void SourceBar::paintEvent(QPaintEvent *) {
 
 void SourceBar::drawSegment(QPainter &p, int x, int y, int w, int h, QColor c, bool left) {
     if (w <= 0) return;
-    QPainterPath path;
-    if (left)
-        path.addRoundedRect(QRectF(x, y, w, h), 6, 6);
-    else
-        path.addRect(QRectF(x, y, w, h));
-    path.addRoundedRect(QRectF(x, y, w, h), 6, 6);
-    p.fillPath(path, c);
+    // FIX (V4.2): 原来的 path 用 OddEvenFill 默认规则，叠加同一个 addRoundedRect
+    // 会让两条路径互相抵消，结果什么都不画——就是用户看到的"空白外框"。
+    // 改成最直白的填充。
+    p.setPen(Qt::NoPen);
+    p.setBrush(c);
+    if (left) {
+        // 最左段：四角都圆
+        p.drawRoundedRect(QRectF(x, y, w, h), 6, 6);
+    } else {
+        // 中段 / 右段：左侧直边，右侧圆角
+        QPainterPath path;
+        path.addRoundedRect(QRectF(x - 6, y, w + 6, h), 6, 6);
+        p.fillPath(path, c);
+    }
 }
 
 void SourceBar::drawLegend(QPainter &p, int x, int y, QColor c, const QString &txt) {
@@ -111,7 +118,10 @@ void SourceBar::drawLegend(QPainter &p, int x, int y, QColor c, const QString &t
     p.setPen(Qt::NoPen);
     p.drawRect(QRect(x, y + 2, 10, 10));
     p.setPen(Theme::instance().textSecondary());
-    p.drawText(QRect(x + 14, y, 140, 16), Qt::AlignLeft | Qt::AlignVCenter, txt);
+    QFont f = p.font();
+    f.setPointSize(10);  // ~13px legend
+    p.setFont(f);
+    p.drawText(QRect(x + 14, y, 160, 18), Qt::AlignLeft | Qt::AlignVCenter, txt);
 }
 
 } // namespace timemaster

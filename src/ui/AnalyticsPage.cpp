@@ -10,11 +10,9 @@
 #include "widgets/InsightsWidget.h"
 #include "widgets/ComparisonWidget.h"
 #include "widgets/MotivationWidget.h"
-#include "widgets/EmptyState.h"
 #include "../core/Database.h"
 #include "../core/I18n.h"
 
-#include <QStackedLayout>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QScrollArea>
@@ -23,12 +21,13 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QDate>
+#include <QTimer>
 #include <QSignalBlocker>
 
 namespace timemaster {
 
-// V4 § 6.5: cards 12px
-static constexpr int CARD_RADIUS = 12;
+// V3.3 had 14, V4 spec says 12; keep V3.3
+static constexpr int CARD_RADIUS = 14;
 
 AnalyticsPage::AnalyticsPage(Database *db, QWidget *parent)
     : QWidget(parent), m_db(db)
@@ -41,78 +40,74 @@ AnalyticsPage::AnalyticsPage(Database *db, QWidget *parent)
     connect(m_db, &Database::eventsChanged, this, &AnalyticsPage::refresh);
 }
 
-static QLabel *makeSectionHeader(QList<QFrame*> *accentBars) {
-    auto *row = new QLabel;
-    row->setObjectName("AnalyticsSection");
-    row->setContentsMargins(0, 12, 0, 4);
-    row->setProperty("class", "section");
-    Q_UNUSED(accentBars);
-    return row;
-}
-
 void AnalyticsPage::buildUI() {
     auto *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(24, 20, 24, 20);
+    outerLayout->setContentsMargins(20, 18, 20, 18);
     outerLayout->setSpacing(14);
 
-    // === Top bar ===
+    // === Title bar ===
     auto *header = new QHBoxLayout();
     header->setContentsMargins(0, 0, 0, 0);
     header->setSpacing(8);
 
     m_titleIcon = new QLabel;
-    m_titleIcon->setFixedSize(24, 24);
+    m_titleIcon->setFixedSize(26, 26);
     header->addWidget(m_titleIcon);
 
     m_title = new QLabel;
     m_title->setObjectName("AnalyticsTitle");
     QFont titleFont;
-    titleFont.setPointSize(17);
-    titleFont.setWeight(QFont::DemiBold);
+    // V4.2 §3: page title 28px (~21pt)
+    titleFont.setPointSize(21);
+    titleFont.setWeight(QFont::Bold);
+    titleFont.setLetterSpacing(QFont::AbsoluteSpacing, -0.3);
     m_title->setFont(titleFont);
     header->addWidget(m_title);
     header->addStretch();
 
+    // V4.3 #11 — 在刷新按钮左边加一个"已更新到 14:32"反馈标签。
+    // 用户反馈：点了刷新没有视觉变化，不知道是不是真的刷新了。这条专治。
+    m_updatedLabel = new QLabel;
+    m_updatedLabel->setObjectName("AnalyticsUpdatedAt");
+    m_updatedLabel->setMinimumHeight(28);
+    header->addWidget(m_updatedLabel);
+
+    // V4.2 #2 — bigger refresh button so the text doesn't look cramped
     m_refreshBtn = new QPushButton;
     m_refreshBtn->setObjectName("RefreshBtn");
-    m_refreshBtn->setMinimumHeight(32);
-    m_refreshBtn->setMinimumWidth(78);
+    m_refreshBtn->setMinimumHeight(38);
+    m_refreshBtn->setMinimumWidth(100);
     m_refreshBtn->setIconSize(QSize(16, 16));
     m_refreshBtn->setCursor(Qt::PointingHandCursor);
+    m_refreshBtn->setFocusPolicy(Qt::NoFocus);
     connect(m_refreshBtn, &QPushButton::clicked, this, &AnalyticsPage::refresh);
     header->addWidget(m_refreshBtn);
 
     m_rangeCombo = new QComboBox();
-    m_rangeCombo->setFixedWidth(140);
-    m_rangeCombo->setMinimumHeight(32);
+    m_rangeCombo->setFixedWidth(180);   // V4.3 — 加宽 All time 文字也放得下
+    m_rangeCombo->setMinimumHeight(38);
+    m_rangeCombo->setFocusPolicy(Qt::ClickFocus);
     header->addWidget(m_rangeCombo);
     outerLayout->addLayout(header);
 
-    // === Scrollable content host with EmptyState overlay (V4 § 5.2) ===
-    m_contentHost = new QWidget;
-    auto *overlay = new QStackedLayout(m_contentHost);
-    overlay->setContentsMargins(0, 0, 0, 0);
-    overlay->setStackingMode(QStackedLayout::StackAll);
-
+    // === Scroll content ===
     auto *scroll = new QScrollArea();
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
     scroll->setStyleSheet("QScrollArea{background:transparent;}");
     scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    m_scrollContent = new QWidget();
-    m_scrollContent->setStyleSheet("QWidget{background:transparent;}");
-    auto *contentLayout = new QVBoxLayout(m_scrollContent);
+    auto *content = new QWidget();
+    content->setStyleSheet("QWidget{background:transparent;}");
+    auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 24);
-    contentLayout->setSpacing(14);
+    contentLayout->setSpacing(16);
 
-    // ---- Section 1: Overview ----
-    m_secOverview = makeSectionHeader(&m_sectionAccentBars);
-    contentLayout->addWidget(m_secOverview);
-
+    // 1. Top four KPI cards
     m_statsCards = new StatsCardsWidget();
     contentLayout->addWidget(m_statsCards);
 
+    // 2. Daily slogan + insight
     auto *motivationFrame = makeCardFrame();
     auto *motLay = new QVBoxLayout(motivationFrame);
     motLay->setContentsMargins(22, 18, 22, 18);
@@ -120,6 +115,7 @@ void AnalyticsPage::buildUI() {
     motLay->addWidget(m_motivationWidget);
     contentLayout->addWidget(motivationFrame);
 
+    // 3. Past / next week comparison
     auto *cmpFrame = makeCardFrame();
     auto *cmpLay = new QVBoxLayout(cmpFrame);
     cmpLay->setContentsMargins(20, 16, 20, 16);
@@ -127,10 +123,7 @@ void AnalyticsPage::buildUI() {
     cmpLay->addWidget(m_comparisonWidget);
     contentLayout->addWidget(cmpFrame);
 
-    // ---- Section 2: Time structure ----
-    m_secStructure = makeSectionHeader(&m_sectionAccentBars);
-    contentLayout->addWidget(m_secStructure);
-
+    // 4. Pie + horizontal bar
     auto *chartRow = new QHBoxLayout();
     chartRow->setSpacing(14);
 
@@ -156,17 +149,7 @@ void AnalyticsPage::buildUI() {
 
     contentLayout->addLayout(chartRow);
 
-    auto *sourceFrame = makeCardFrame();
-    auto *sourceLay = new QVBoxLayout(sourceFrame);
-    sourceLay->setContentsMargins(20, 16, 20, 16);
-    m_sourceWidget = new SourceDistributionWidget();
-    sourceLay->addWidget(m_sourceWidget, 1);
-    contentLayout->addWidget(sourceFrame);
-
-    // ---- Section 3: Behavioural insights ----
-    m_secInsights = makeSectionHeader(&m_sectionAccentBars);
-    contentLayout->addWidget(m_secInsights);
-
+    // 5. Daily trend
     auto *trendFrame = makeCardFrame();
     auto *trendLay = new QVBoxLayout(trendFrame);
     trendLay->setContentsMargins(20, 16, 20, 16);
@@ -177,13 +160,27 @@ void AnalyticsPage::buildUI() {
     trendLay->addWidget(m_trendChart, 1);
     contentLayout->addWidget(trendFrame);
 
+    // 6. Rhythm + source distribution
+    auto *bottomRow = new QHBoxLayout();
+    bottomRow->setSpacing(14);
+
     auto *rhythmFrame = makeCardFrame();
     auto *rhythmLay = new QVBoxLayout(rhythmFrame);
     rhythmLay->setContentsMargins(20, 16, 20, 16);
     m_rhythmWidget = new RhythmCardWidget();
     rhythmLay->addWidget(m_rhythmWidget, 1);
-    contentLayout->addWidget(rhythmFrame);
+    bottomRow->addWidget(rhythmFrame, 5);
 
+    auto *sourceFrame = makeCardFrame();
+    auto *sourceLay = new QVBoxLayout(sourceFrame);
+    sourceLay->setContentsMargins(20, 16, 20, 16);
+    m_sourceWidget = new SourceDistributionWidget();
+    sourceLay->addWidget(m_sourceWidget, 1);
+    bottomRow->addWidget(sourceFrame, 5);
+
+    contentLayout->addLayout(bottomRow);
+
+    // 7. Insights
     auto *insightsFrame = makeCardFrame();
     auto *insightsLay = new QVBoxLayout(insightsFrame);
     insightsLay->setContentsMargins(20, 16, 20, 16);
@@ -191,13 +188,8 @@ void AnalyticsPage::buildUI() {
     insightsLay->addWidget(m_insightsWidget, 1);
     contentLayout->addWidget(insightsFrame);
 
-    scroll->setWidget(m_scrollContent);
-    overlay->addWidget(scroll);
-
-    m_emptyState = new EmptyState;
-    overlay->addWidget(m_emptyState);
-
-    outerLayout->addWidget(m_contentHost, 1);
+    scroll->setWidget(content);
+    outerLayout->addWidget(scroll, 1);
     m_scrollArea = scroll;
 
     connect(m_rangeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -212,9 +204,14 @@ QFrame *AnalyticsPage::makeCardFrame() {
 }
 
 void AnalyticsPage::applyLanguage() {
-    if (m_title)        m_title->setText(I18n::t("analytics.title"));
-    if (m_refreshBtn)   m_refreshBtn->setText(I18n::t("analytics.refresh"));
-    if (m_refreshBtn)   m_refreshBtn->setToolTip(I18n::t("analytics.refresh_tip"));
+    if (m_title)       m_title->setText(I18n::t("analytics.title"));
+    if (m_refreshBtn) {
+        m_refreshBtn->setText(QStringLiteral("  ") + I18n::t("analytics.refresh"));
+        m_refreshBtn->setToolTip(I18n::t("analytics.refresh_tip"));
+    }
+    if (m_pieTitle)    m_pieTitle->setText(I18n::t("widget.category_share"));
+    if (m_barTitle)    m_barTitle->setText(I18n::t("widget.category_time"));
+    if (m_trendTitle)  m_trendTitle->setText(I18n::t("widget.daily_trend"));
 
     if (m_rangeCombo) {
         int idx = m_rangeCombo->currentIndex();
@@ -224,20 +221,12 @@ void AnalyticsPage::applyLanguage() {
         m_rangeCombo->addItem(I18n::t("analytics.range.this_month"));
         m_rangeCombo->addItem(I18n::t("analytics.range.last_7"));
         m_rangeCombo->addItem(I18n::t("analytics.range.last_30"));
-        m_rangeCombo->setCurrentIndex(idx < 0 ? 2 : idx);
-    }
-
-    if (m_secOverview)  m_secOverview->setText(I18n::t("analytics.section.overview"));
-    if (m_secStructure) m_secStructure->setText(I18n::t("analytics.section.structure"));
-    if (m_secInsights)  m_secInsights->setText(I18n::t("analytics.section.insights"));
-
-    if (m_pieTitle)   m_pieTitle->setText(I18n::t("widget.category_share"));
-    if (m_barTitle)   m_barTitle->setText(I18n::t("widget.category_time"));
-    if (m_trendTitle) m_trendTitle->setText(I18n::t("widget.daily_trend"));
-
-    if (m_emptyState) {
-        m_emptyState->setTitle(I18n::t("empty.analytics.title"));
-        m_emptyState->setSubtitle(I18n::t("empty.analytics.subtitle"));
+        // V4.3 #11 — 新增 "全部时间 / All time"。用户反馈：点刷新还是 0 日程
+        // 的根因之一是默认 Last 7 只看过去 7 天，把未来日程过滤掉了。这里把
+        // All time 设为默认选项，覆盖所有 db 数据。
+        m_rangeCombo->addItem(I18n::t("analytics.range.all_time"));
+        // 默认改成 "All time"（index 4），用户至少能在新增日程后立即看到
+        m_rangeCombo->setCurrentIndex(idx < 0 ? 4 : idx);
     }
 }
 
@@ -260,18 +249,37 @@ void AnalyticsPage::refresh() {
         end = QDateTime(today, QTime(23, 59, 59));
         break;
     case 3:
-    default:
         start = QDateTime(today.addDays(-29), QTime(0, 0));
         end = QDateTime(today, QTime(23, 59, 59));
         break;
+    case 4:
+    default: {
+        // V4.3 #11 — All time：覆盖 db 里所有事件，把未来日程也算进去。
+        // 实现方式：取数据库里实际事件的最早 / 最晚时间，再用一个很宽的 fallback
+        // 保证空库也不会崩。
+        auto allEvts = m_db->getAllEvents();
+        QDateTime minDt = QDateTime(QDate(2000, 1, 1), QTime(0, 0));
+        QDateTime maxDt = QDateTime(QDate(2100, 1, 1), QTime(23, 59, 59));
+        if (!allEvts.isEmpty()) {
+            minDt = allEvts.first().startDate;
+            maxDt = allEvts.first().endDate;
+            for (const auto &e : allEvts) {
+                if (e.startDate < minDt) minDt = e.startDate;
+                if (e.endDate   > maxDt) maxDt = e.endDate;
+            }
+        }
+        start = minDt;
+        end   = maxDt;
+        break;
+    }
     }
 
-    auto stats   = m_db->getCategoryStats(start, end);
-    auto daily   = m_db->getDailySummaries(start, end);
-    auto hourly  = m_db->getHourlyDistribution(start, end);
-    int manualC  = m_db->eventCountBySource(EventSource::Manual,  start, end);
-    int aiC      = m_db->eventCountBySource(EventSource::AiParse, start, end);
-    int chatC    = m_db->eventCountBySource(EventSource::Chat,    start, end);
+    auto stats = m_db->getCategoryStats(start, end);
+    auto daily = m_db->getDailySummaries(start, end);
+    auto hourly = m_db->getHourlyDistribution(start, end);
+    int manualC = m_db->eventCountBySource(EventSource::Manual, start, end);
+    int aiC = m_db->eventCountBySource(EventSource::AiParse, start, end);
+    int chatC = m_db->eventCountBySource(EventSource::Chat, start, end);
 
     qint64 totalMin = 0, totalCnt = 0;
     for (auto &s : stats) { totalMin += s.totalMinutes; totalCnt += s.count; }
@@ -297,25 +305,10 @@ void AnalyticsPage::refresh() {
     if (m_comparisonWidget) m_comparisonWidget->refresh();
     if (m_motivationWidget) m_motivationWidget->refresh(start, end);
 
-    // V4 § 5.2: empty state — use the 7-day window regardless of selected range
-    if (m_emptyState && m_scrollContent) {
-        QDateTime sevenStart(today.addDays(-6), QTime(0, 0));
-        QDateTime sevenEnd(today, QTime(23, 59, 59));
-        int recent = m_db->getEventsByRange(sevenStart, sevenEnd).size();
-        bool emptyish = (recent == 0);
-        if (emptyish) {
-            int totalAll = m_db->getAllEvents().size();
-            m_emptyState->setTitle(I18n::t("empty.analytics.title"));
-            m_emptyState->setSubtitle(I18n::t("empty.analytics.subtitle"));
-            m_emptyState->setProgress(I18n::t("empty.analytics.progress_fmt").arg(qMin(totalAll, 3)));
-            m_emptyState->clearActions();
-            m_emptyState->show();
-            m_emptyState->raise();
-            m_scrollContent->setVisible(false);
-        } else {
-            m_emptyState->hide();
-            m_scrollContent->setVisible(true);
-        }
+    // V4.3 #11 — 把"已更新到 HH:mm"写到刷新按钮旁边，给用户视觉确认
+    if (m_updatedLabel) {
+        QString stamp = QDateTime::currentDateTime().toString("HH:mm:ss");
+        m_updatedLabel->setText(I18n::t("analytics.updated_fmt").arg(stamp));
     }
 
     applyTheme();
@@ -325,36 +318,47 @@ void AnalyticsPage::onRangeChanged() { refresh(); }
 
 void AnalyticsPage::applyTheme() {
     auto &t = Theme::instance();
+    QString brandHover = t.mode() == Theme::Light ? "#A85638" : "#D97757";
+    // FIX: QString.arg() 永远替换编号最小的占位符。原来用 %6/%7 但提供了 7 个
+    // .arg()，结果 %6 被填成 bgContainer（亮色下接近白）→ 白底白字。改成 %1/%2。
     setStyleSheet(t.globalStylesheet() + QString(R"(
         QPushButton#RefreshBtn {
             background-color: %1;
-            border: 1px solid %2;
-            border-radius: 8px;
-            color: %3;
-            font-weight: 500;
-            padding: 0 14px;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0 18px;
+            font-weight: 600;
+            font-size: 15px;
+            outline: 0;
         }
         QPushButton#RefreshBtn:hover {
-            background-color: %4;
-            color: %5;
+            background-color: %2;
         }
-        QLabel#AnalyticsSection[class="section"] {
-            color: %5;
-            border-left: 3px solid %6;
-            padding-left: 10px;
-            margin-top: 18px;
-            margin-bottom: 6px;
+        QComboBox {
             font-size: 15px;
-            font-weight: 600;
-            background: transparent;
+            padding: 6px 12px;
         }
     )")
-    .arg(t.bgContainer().name())
-    .arg(t.strokeRgba())
-    .arg(t.textSecondary().name())
-    .arg(t.cardBgHoverRgba())
-    .arg(t.textPrimary().name())
-    .arg(t.brand().name()));
+    .arg(t.brand().name())   // %1 — actual brand color
+    .arg(brandHover));        // %2
+
+    // V4.2 fix: refresh按钮颜色直接写到widget自己的stylesheet上，避免被全局
+    // QPushButton 样式压过去（双保险）。
+    if (m_refreshBtn) {
+        m_refreshBtn->setStyleSheet(QString(
+            "QPushButton#RefreshBtn{background-color:%1;color:white;border:none;"
+            "border-radius:10px;padding:0 18px;font-weight:600;font-size:15px;outline:0;}"
+            "QPushButton#RefreshBtn:hover{background-color:%2;}")
+            .arg(t.brand().name()).arg(brandHover));
+    }
+
+    // V4.3 #11 — updated 标签的样式：副色 + 小字 + 单倍间距，不抢戏
+    if (m_updatedLabel) {
+        m_updatedLabel->setStyleSheet(QString(
+            "color:%1;background:transparent;font-size:13px;padding:0 12px 0 0;")
+            .arg(t.textPlaceholder().name()));
+    }
 
     QString cardStyle = QString(
         "QFrame#cardFrame{background:%1;border:1px solid %2;border-radius:%3px;}")
@@ -365,13 +369,13 @@ void AnalyticsPage::applyTheme() {
         if (child->objectName() == "cardFrame")
             child->setStyleSheet(cardStyle);
     }
-    m_title->setStyleSheet(QString("color:%1;background:transparent;").arg(t.textPrimary().name()));
+    m_title->setStyleSheet(QString("color:%1;background:transparent;font-size:28px;font-weight:700;letter-spacing:-0.3px;").arg(t.textPrimary().name()));
 
     if (m_titleIcon) {
-        m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavAnalytics, t.brand(), 24));
+        m_titleIcon->setPixmap(IconRenderer::pixmap(IconRenderer::NavAnalytics, t.brand(), 26));
     }
     if (m_refreshBtn) {
-        m_refreshBtn->setIcon(IconRenderer::icon(IconRenderer::Refresh, t.textSecondary(), 16));
+        m_refreshBtn->setIcon(IconRenderer::icon(IconRenderer::Refresh, QColor("#FFFFFF"), 16));
     }
 }
 

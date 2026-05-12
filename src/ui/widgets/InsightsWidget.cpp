@@ -94,10 +94,12 @@ void InsightsWidget::refresh(const QDateTime &start, const QDateTime &end) {
         }
     }
 
-    QString html = QString("<div style='line-height:1.7;'>%1</div>")
+    QString html = QString("<div style='line-height:1.7;font-size:15px;'>%1</div>")
                         .arg(insights.join("&nbsp;&nbsp;|&nbsp;&nbsp;"));
     m_text->setText(html);
     m_text->setTextFormat(Qt::RichText);
+    // V4.2: 在 widget 自身上注入 font-size 防止被全局 QSS 覆盖
+    m_text->setStyleSheet("background:transparent;font-size:15px;");
 }
 
 } // namespace timemaster

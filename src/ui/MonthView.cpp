@@ -1,6 +1,7 @@
 #include "MonthView.h"
 #include "Theme.h"
 #include "../core/I18n.h"
+#include "../core/Preferences.h"
 
 #include <QPainter>
 #include <QPainterPath>
@@ -11,22 +12,24 @@
 namespace timemaster {
 
 namespace {
-// V4 § 8.4: padding 4 -> 8; date text height 32 -> 40
-constexpr int HEADER_HEIGHT   = 32;
-constexpr int CELL_PADDING    = 8;
+constexpr int HEADER_HEIGHT = 32;
+constexpr int CELL_PADDING = 4;
 constexpr int EVENT_BAR_HEIGHT = 19;
-constexpr int EVENT_BAR_GAP   = 3;
-constexpr int DATE_TEXT_HEIGHT = 40;
-
-constexpr int TODAY_DIAMETER  = 30;     // V4 § 3.4: 26 -> 30
+constexpr int EVENT_BAR_GAP = 3;
+constexpr int DATE_TEXT_HEIGHT = 32;
 }
 
 MonthView::MonthView(QWidget *parent) : QWidget(parent) {
     setMouseTracking(true);
     setAttribute(Qt::WA_StyledBackground, false);
     m_currentDate = QDate::currentDate();
-    // 语言变化时表头要重画
+    // Repaint when language toggles (weekday header swaps)
     connect(&I18n::instance(), &I18n::languageChanged, this, [this]{ update(); });
+    // V4.3 #8 — 周起始日变化时整月重排
+    connect(&Preferences::instance(), &Preferences::weekStartChanged, this, [this]{
+        rebuildLayout();
+        update();
+    });
 }
 
 void MonthView::setCurrentDate(const QDate &date) {
@@ -44,8 +47,8 @@ void MonthView::setEvents(const QList<CalendarEvent> &events) {
 QList<QDate> MonthView::buildDays() const {
     QList<QDate> days;
     QDate firstOfMonth(m_currentDate.year(), m_currentDate.month(), 1);
-    int dayOfWeek = firstOfMonth.dayOfWeek() - 1;  // Mon=0, Sun=6
-    QDate gridStart = firstOfMonth.addDays(-dayOfWeek);
+    // V4.3 #8 — 周起始日由 Preferences 决定
+    QDate gridStart = Preferences::instance().weekStartOf(firstOfMonth);
     for (int i = 0; i < 42; ++i) days << gridStart.addDays(i);
     return days;
 }
@@ -133,47 +136,56 @@ void MonthView::paintEvent(QPaintEvent *) {
     auto &theme = Theme::instance();
     auto pal = theme.palette();
 
+    // 透明背景（让上层卡片背景透出）
     p.fillRect(rect(), Qt::transparent);
 
-    // 周表头：Mon..Sun
-    static const char *keys[] = {
+    // V4.3 #8 — 周表头顺序根据 weekStartsMonday 决定
+    static const char *keysMon[] = {
         "calendar.month.weekday.mon", "calendar.month.weekday.tue",
         "calendar.month.weekday.wed", "calendar.month.weekday.thu",
         "calendar.month.weekday.fri", "calendar.month.weekday.sat",
         "calendar.month.weekday.sun"
     };
+    static const char *keysSun[] = {
+        "calendar.month.weekday.sun", "calendar.month.weekday.mon",
+        "calendar.month.weekday.tue", "calendar.month.weekday.wed",
+        "calendar.month.weekday.thu", "calendar.month.weekday.fri",
+        "calendar.month.weekday.sat"
+    };
+    bool monStart = Preferences::instance().weekStartsMonday();
+    const char *const *keys = monStart ? keysMon : keysSun;
+
     QFont headerFont = font();
     headerFont.setPointSize(11);
-    headerFont.setWeight(QFont::DemiBold);
+    headerFont.setWeight(QFont::Bold);
     p.setFont(headerFont);
     double cellW = double(width()) / 7.0;
 
     for (int i = 0; i < 7; ++i) {
         QRect r(qRound(i * cellW), 0, qRound(cellW + 1), HEADER_HEIGHT);
-        // V4 § 8.1: 周末统一用 textSecondary 暖灰，不要 brand 不要 danger
-        p.setPen(theme.textSecondary());
+        // V4.3 #8 — 周末判断：monStart 时 weekend = (5, 6)；sunStart 时 weekend = (0, 6)
+        bool weekend = monStart ? (i == 5 || i == 6) : (i == 0 || i == 6);
+        p.setPen(weekend ? theme.brand() : theme.textSecondary());
         p.drawText(r, Qt::AlignCenter, I18n::t(keys[i]));
     }
 
-    // V4 § 8.3：网格线 alpha 极淡（Theme.stroke 已降至 0.08）
     p.setPen(theme.stroke());
     p.drawLine(0, HEADER_HEIGHT, width(), HEADER_HEIGHT);
 
     if (m_cells.isEmpty()) rebuildLayout();
 
     QFont dateFont = font();
-    dateFont.setPointSize(11);   // ~14px @ 96dpi
-    dateFont.setWeight(QFont::Medium);  // V4 § 3.4
-
-    QFont todayFont = font();
-    todayFont.setPointSize(11);
-    todayFont.setWeight(QFont::DemiBold);  // 600
+    dateFont.setPointSize(11);
+    QFont dateBigFont = font();
+    dateBigFont.setPointSize(12);
+    dateBigFont.setWeight(QFont::Bold);
 
     for (int i = 0; i < m_cells.size(); ++i) {
         const auto &cell = m_cells[i];
 
-        // V4 § 8.2：删除今日背景色块，只留实心圆
-        if (i == m_hoverIndex && !cell.isToday) {
+        if (cell.isToday) {
+            p.fillRect(cell.rect, theme.todayHighlight());
+        } else if (i == m_hoverIndex) {
             p.fillRect(cell.rect, theme.bgHover());
         }
 
@@ -183,35 +195,38 @@ void MonthView::paintEvent(QPaintEvent *) {
         p.drawLine(cell.rect.left(), cell.rect.bottom(),
                    cell.rect.right(), cell.rect.bottom());
 
-        // 日期数字：左上角 (12, 10) padding (V4 § 3.4)
-        QRect dateRect(cell.rect.left() + 12,
-                       cell.rect.top() + 10,
-                       cell.rect.width() - 24,
-                       DATE_TEXT_HEIGHT - 10);
+        QRect dateRect(cell.rect.left() + 8,
+                       cell.rect.top() + 6,
+                       cell.rect.width() - 16,
+                       DATE_TEXT_HEIGHT - 6);
 
         QColor dateColor;
         if (cell.isToday) {
-            dateColor = Qt::white;
+            dateColor = theme.brand();
         } else if (!cell.isCurrentMonth) {
             dateColor = theme.textPlaceholder();
         } else {
             int dow = cell.date.dayOfWeek() % 7;
-            // V4 § 8.1: 周末用 textSecondary（不 brand 不 danger）
-            dateColor = (dow == 0 || dow == 6) ? theme.textSecondary() : theme.textPrimary();
+            dateColor = (dow == 0 || dow == 6) ? theme.danger() : theme.textPrimary();
         }
+        p.setPen(dateColor);
 
         if (cell.isToday) {
-            p.setFont(todayFont);
-            int diam = TODAY_DIAMETER;
+            // 留出 padding：圆比之前(24)略大到 26，数字小一档(10pt)保持加粗
+            QFont fnum = font();
+            fnum.setPointSize(10);
+            fnum.setWeight(QFont::Bold);
+            p.setFont(fnum);
+
+            int diam = 26;
             QRect circle(dateRect.left(), dateRect.top() + (dateRect.height() - diam) / 2,
-                         diam, diam);
+                        diam, diam);
             p.setBrush(theme.brand());
             p.setPen(Qt::NoPen);
             p.drawEllipse(circle);
             p.setPen(Qt::white);
             p.drawText(circle, Qt::AlignCenter, QString::number(cell.date.day()));
         } else {
-            p.setPen(dateColor);
             p.setFont(dateFont);
             p.drawText(dateRect, Qt::AlignLeft | Qt::AlignVCenter,
                        QString::number(cell.date.day()));
@@ -229,7 +244,7 @@ void MonthView::paintEvent(QPaintEvent *) {
         path.addRoundedRect(er.rect, 5, 5);
         p.fillPath(path, c.bg);
 
-        // V4 § 8.5：左侧色条 3px -> 2px
+        // 左侧 strip：内嵌、圆角，不再硬切（V4.1 #6: 3px -> 2px）
         QRect bar(er.rect.left() + 1, er.rect.top() + 2, 2, qMax(0, er.rect.height() - 4));
         QPainterPath barPath;
         barPath.addRoundedRect(bar, 1.0, 1.0);
@@ -263,6 +278,8 @@ void MonthView::paintEvent(QPaintEvent *) {
         }
         int extra = totalForDay - shown;
         if (extra <= 0) continue;
+        // V4.3 #9 — 文案改用 i18n key，点击后由 MonthView::overflowClicked 信号
+        // 通知 CalendarPage 切到日视图（CalendarPage 已处理）。
         QString label = I18n::t("calendar.month.more_fmt").arg(extra);
         p.drawText(o.rect, Qt::AlignCenter, label);
     }
@@ -282,9 +299,21 @@ void MonthView::mousePressEvent(QMouseEvent *e) {
             return;
         }
     }
+    // V4.4 #2 — 单击格子（没点到事件、没点到 +N）直接跳到对应日视图。
+    // 之前是双击触发，但用户操作"看那天"明显比"新建"频率高，单击应该
+    // 给主要操作。新建事件保留 Ctrl+N / 右上角按钮 / 日视图双击空白这三个入口。
+    for (const auto &cell : m_cells) {
+        if (cell.rect.contains(e->pos())) {
+            emit dateClicked(cell.date);
+            return;
+        }
+    }
 }
 
 void MonthView::mouseDoubleClickEvent(QMouseEvent *e) {
+    // V4.4 #2 — 双击空白格依旧 emit dateClicked，但 CalendarPage 端会判同
+    // 当前 view（已经在 Day mode 则不重复切，可以接着触发新建事件）。这样
+    // 老用户的双击习惯也不会突然 silent fail。
     if (e->button() != Qt::LeftButton) return;
     for (const auto &cell : m_cells) {
         if (cell.rect.contains(e->pos())) {

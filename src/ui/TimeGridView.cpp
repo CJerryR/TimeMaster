@@ -1,6 +1,8 @@
 #include "TimeGridView.h"
 #include "Theme.h"
+#include "FontLoader.h"
 #include "../core/I18n.h"
+#include "../core/Preferences.h"
 
 #include <QPainter>
 #include <QMouseEvent>
@@ -24,6 +26,11 @@ TimeGridView::TimeGridView(Mode mode, QWidget *parent)
 
     // Repaint when language toggles (weekday labels swap)
     connect(&I18n::instance(), &I18n::languageChanged, this, [this]{ update(); });
+    // V4.3 #8 — 周起始日变化时整个网格重排
+    connect(&Preferences::instance(), &Preferences::weekStartChanged, this, [this]{
+        rebuildLayout();
+        update();
+    });
 }
 
 void TimeGridView::setCurrentDate(const QDate &date) {
@@ -49,11 +56,11 @@ void TimeGridView::scrollToHour(int hour) {
 }
 
 QList<QDate> TimeGridView::visibleDays() const {
-    if (m_mode == DayMode) return { m_currentDate };
+    // V4.2 #11: Day mode shows 2 days side-by-side.
+    if (m_mode == DayMode) return { m_currentDate, m_currentDate.addDays(1) };
     QList<QDate> days;
-    // 周一为每周起点
-    int dow = m_currentDate.dayOfWeek() - 1;  // Mon=0..Sun=6
-    QDate start = m_currentDate.addDays(-dow);
+    // V4.3 #8 — 周起始日由 Preferences 决定（周一 or 周日）
+    QDate start = Preferences::instance().weekStartOf(m_currentDate);
     for (int i = 0; i < 7; ++i) days << start.addDays(i);
     return days;
 }
@@ -178,7 +185,10 @@ QList<TimeGridView::EventLayout> TimeGridView::layoutDayEvents(const QDate &date
 
         int top = int(startM / 60.0 * m_hourHeight);
         int hgt = int((endM - startM) / 60.0 * m_hourHeight);
-        if (hgt < 18) hgt = 18;
+        // V4.3 #6 / V4.4 #3 — 短日程显示最小高度。V4.3 设为 36，但 #3 把
+        // 标题区域顶部 padding 从 4 提到 7，36 已经放不下"标题+时间"两行，
+        // 这里再提到 44：7 (top) + 22 (title) + 14 (time) + 1 (bottom) = 44。
+        if (hgt < 44) hgt = 44;
 
         double colW = double(dayCol.width() - 4) / totalCols;
         int x = dayCol.left() + 2 + int(col * colW);
@@ -223,24 +233,36 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         QDate d = days[i];
         bool isToday = (d == today);
 
-        // 周几标签：加粗
+        // V4.2 #1 — weekday label (Mon/Tue/...) bold, never overlapped by the
+        // today highlight. Top zone reserved 8..26 px.
         QFont f1 = font();
-        f1.setPointSize(10);
+        f1.setPointSize(11);
         f1.setWeight(QFont::Bold);
         p.setFont(f1);
-        p.setPen(isToday ? theme.brand() : theme.textSecondary());
-        QRect topR(col.left(), 8, col.width(), 16);
-        p.drawText(topR, Qt::AlignCenter, weekdays[d.dayOfWeek() % 7]);
-
+        int dowIdx = d.dayOfWeek() % 7;  // Sun=0..Sat=6
         if (isToday) {
-            // 高亮圆与数字之间留出 4px 内边距，数字稍小一些保持加粗
+            p.setPen(theme.brand());
+        } else {
+            p.setPen((dowIdx == 0 || dowIdx == 6) ? theme.danger() : theme.textSecondary());
+        }
+        QRect topR(col.left(), 8, col.width(), 18);
+        p.drawText(topR, Qt::AlignCenter, weekdays[dowIdx]);
+
+        // V4.2 #1 — today highlight: smaller circle (28px) placed BELOW the
+        // weekday text with a 6px gap, never covering the text above. The
+        // brand-color column tint (set further down) is also softened.
+        if (isToday) {
+            // V4.1 #7 — today numeric matches sibling day fontsize (15pt DemiBold,
+            // V4.2 — slightly smaller so the circle has comfortable breathing room).
             QFont fnum = font();
-            fnum.setPointSize(16);
-            fnum.setWeight(QFont::Bold);
+            fnum.setFamily(FontLoader::numericFamily());
+            fnum.setPointSize(15);
+            fnum.setWeight(QFont::DemiBold);
             p.setFont(fnum);
 
-            int diam = 34;  // 比之前(32)大一圈，把数字裹得更宽松
-            QRect circle(col.center().x() - diam / 2, 24, diam, diam);
+            int diam = 28;  // V4.2: shrunk from 40 -> 28
+            int circleTop = 32;  // V4.2: 6px gap below weekday label
+            QRect circle(col.center().x() - diam / 2, circleTop, diam, diam);
             p.setBrush(theme.brand());
             p.setPen(Qt::NoPen);
             p.drawEllipse(circle);
@@ -248,12 +270,12 @@ void TimeGridView::paintEvent(QPaintEvent *) {
             p.drawText(circle, Qt::AlignCenter, QString::number(d.day()));
         } else {
             QFont f2 = font();
-            f2.setPointSize(19);
+            f2.setFamily(FontLoader::numericFamily());
+            f2.setPointSize(15);
             f2.setWeight(QFont::DemiBold);
             p.setFont(f2);
-            int dow = d.dayOfWeek() % 7;
-            p.setPen((dow == 0 || dow == 6) ? theme.danger() : theme.textPrimary());
-            QRect dR(col.left(), 26, col.width(), 30);
+            p.setPen((dowIdx == 0 || dowIdx == 6) ? theme.danger() : theme.textPrimary());
+            QRect dR(col.left(), 32, col.width(), 28);
             p.drawText(dR, Qt::AlignCenter, QString::number(d.day()));
         }
     }
@@ -280,7 +302,9 @@ void TimeGridView::paintEvent(QPaintEvent *) {
     QRect gridArea(0, gridTop, width(), height() - gridTop);
     p.setClipRect(gridArea);
 
-    QFont hf = font(); hf.setPointSize(9);
+    QFont hf = font();
+    hf.setFamily(FontLoader::numericFamily());
+    hf.setPointSize(9);
     p.setFont(hf);
     for (int h = 1; h < 24; ++h) {
         int y = gridTop + h * m_hourHeight - m_scrollY;
@@ -301,15 +325,15 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         p.drawLine(x, gridTop - m_allDayBandHeight, x, height());
     }
 
-    if (m_mode == WeekMode) {
-        for (int i = 0; i < nDays; ++i) {
-            if (days[i] == today) {
-                QRect r(int(gridLeft + i * colW), gridTop,
-                        int(colW), height() - gridTop);
-                QColor c = theme.todayHighlight();
-                c.setAlphaF(0.3);
-                p.fillRect(r, c);
-            }
+    // V4.2 #1 — today column highlight much softer (alpha 0.08 vs old 0.3).
+    // Applies in both Week mode and the new 2-day Day mode.
+    for (int i = 0; i < nDays; ++i) {
+        if (days[i] == today) {
+            QRect r(int(gridLeft + i * colW), gridTop,
+                    int(colW), height() - gridTop);
+            QColor c = theme.brand();
+            c.setAlphaF(0.08);
+            p.fillRect(r, c);
         }
     }
 
@@ -324,36 +348,38 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         }
         auto &c = pal[er.event.color];
 
-        // Apple Calendar 风：四角统一 6px 圆角；左侧 3px 内嵌彩条同样圆角，
-        // 而不是把整个块切掉。
+        // Apple Calendar 风：四角统一 6px 圆角；左侧 3px 内嵌彩条同样圆角
         QPainterPath path;
         path.addRoundedRect(r, 6, 6);
         p.fillPath(path, c.bg);
 
-        // 左侧 strip：内缩 1px，单独圆角，不再硬切
         QRect bar(r.left() + 2, r.top() + 3, 3, qMax(0, r.height() - 6));
         QPainterPath barPath;
         barPath.addRoundedRect(bar, 1.5, 1.5);
         p.fillPath(barPath, c.text);
 
-        QRect tr(r.left() + 10, r.top() + 4, r.width() - 14, r.height() - 6);
+        // V4.4 #3 — 标题文本框顶部 padding 4 → 7，给中文字符的顶部笔画
+        // （比如"接"的提手旁、"深"的氵）留出呼吸空间。配套地标题高度
+        // 18 → 22，避免 descender 被裁。
+        QRect tr(r.left() + 10, r.top() + 7, r.width() - 14, r.height() - 10);
         p.setPen(c.text);
 
         QFont f = font(); f.setPointSize(11); f.setWeight(QFont::DemiBold);
         p.setFont(f);
         QFontMetrics fm(f);
         QString title = fm.elidedText(er.event.title, Qt::ElideRight, tr.width());
-        p.drawText(QRect(tr.left(), tr.top(), tr.width(), 18),
+        p.drawText(QRect(tr.left(), tr.top(), tr.width(), 22),
                    Qt::AlignLeft | Qt::AlignTop, title);
 
-        // 腹部：时间 / 地点 / 备注 —— 按可用高度逐行追加
         if (!er.event.allDay) {
-            int yCursor = tr.top() + 18;  // 标题之下
+            // V4.4 #3 — 标题用 22px 后，第二行（时间）起点上移 4px
+            int yCursor = tr.top() + 22;
             const int kRowH = 14;
 
-            // 第 1 行：时间（永远显示，前提是事件还放得下）
-            if (r.height() > 28) {
-                QFont ft = font(); ft.setPointSize(9);
+            if (r.height() > 32) {
+                QFont ft = font();
+                ft.setFamily(FontLoader::numericFamily());
+                ft.setPointSize(9);
                 p.setFont(ft);
                 QString ts = er.event.startDate.toString("HH:mm")
                            + " - " + er.event.endDate.toString("HH:mm");
@@ -362,7 +388,6 @@ void TimeGridView::paintEvent(QPaintEvent *) {
                 yCursor += kRowH;
             }
 
-            // 第 2 行：地点（如有，且事件高度足够）
             if (!er.event.location.isEmpty() && (yCursor + kRowH) <= tr.bottom()) {
                 QFont fl = font(); fl.setPointSize(9);
                 p.setFont(fl);
@@ -374,17 +399,14 @@ void TimeGridView::paintEvent(QPaintEvent *) {
                 yCursor += kRowH;
             }
 
-            // 第 3 行：备注（如有，并且事件还有空间）—— 取首行 + 省略号
             if (!er.event.description.isEmpty() && (yCursor + kRowH) <= tr.bottom()) {
                 QFont fd = font(); fd.setPointSize(9); fd.setItalic(true);
                 p.setFont(fd);
                 QFontMetrics fdm(fd);
-                // 只取第一行（去掉换行后的内容）
                 QString desc = er.event.description;
                 int nl = desc.indexOf('\n');
                 if (nl >= 0) desc = desc.left(nl);
                 desc = fdm.elidedText(desc, Qt::ElideRight, tr.width());
-                // 备注用稍暗的同色系
                 QColor descColor = c.text;
                 descColor.setAlphaF(0.78);
                 p.setPen(descColor);
@@ -405,8 +427,8 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         int mins = nt.hour() * 60 + nt.minute();
         int y = gridTop + int(mins / 60.0 * m_hourHeight) - m_scrollY;
         if (y > gridTop && y < height()) {
-            int xL = (m_mode == DayMode) ? gridLeft : int(gridLeft + nowCol * colW);
-            int xR = (m_mode == DayMode) ? width() : int(gridLeft + (nowCol + 1) * colW);
+            int xL = int(gridLeft + nowCol * colW);
+            int xR = int(gridLeft + (nowCol + 1) * colW);
             p.setBrush(theme.nowLine());
             p.setPen(Qt::NoPen);
             p.drawEllipse(QPoint(xL, y), 4, 4);
@@ -480,21 +502,17 @@ void TimeGridView::mouseMoveEvent(QMouseEvent *e) {
 void TimeGridView::wheelEvent(QWheelEvent *e) {
     int dy = e->angleDelta().y();
 
-    // ============ Ctrl + 滚轮：纵向缩放（小时格高度） ============
     if (e->modifiers() & Qt::ControlModifier) {
         if (dy == 0) { e->accept(); return; }
 
-        // 灵敏度：每个标准滚动单位（120）仅改变 4 px，操作起来很柔和
         constexpr double kStepPerUnit = 4.0 / 120.0;
         double targetH = m_hourHeight + dy * kStepPerUnit;
 
-        // 上下限：最小 = 56（默认 1.0x），最大 = 56 * 3.14 ≈ 176（3.14x）
         constexpr int kMinH = 56;
         constexpr int kMaxH = int(56 * 3.14 + 0.5);
         int newH = qBound(double(kMinH), targetH, double(kMaxH));
         if (newH == m_hourHeight) { e->accept(); return; }
 
-        // 以鼠标所在时间为锚点缩放，避免视野"跳走"
         int gridTop = m_headerHeight + m_allDayBandHeight;
         double anchorTimeY = qMax(0, e->position().toPoint().y() - gridTop) + m_scrollY;
         double anchorRatio = (m_hourHeight > 0) ? anchorTimeY / double(m_hourHeight) : 0;
@@ -512,7 +530,6 @@ void TimeGridView::wheelEvent(QWheelEvent *e) {
         return;
     }
 
-    // ============ 普通滚轮：纵向滚动 ============
     int viewportH = height() - m_headerHeight - m_allDayBandHeight;
     int maxScroll = qMax(0, m_contentHeight - viewportH);
     m_scrollY = qBound(0, m_scrollY - dy, maxScroll);

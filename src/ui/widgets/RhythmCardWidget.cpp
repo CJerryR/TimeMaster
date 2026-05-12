@@ -11,7 +11,7 @@
 namespace timemaster {
 
 RhythmCardWidget::RhythmCardWidget(QWidget *parent) : QWidget(parent) {
-    setMinimumHeight(120);
+    setMinimumHeight(160);   // V4.2: was 120, give chart + labels room
 
     auto *lay = new QVBoxLayout(this);
     lay->setContentsMargins(0, 0, 0, 0);
@@ -37,8 +37,11 @@ void RhythmCardWidget::paintEvent(QPaintEvent *) {
 
     auto &theme = Theme::instance();
     int topOffset = 26;
+    // FIX (V4.2): bottom 边距从 8 增加到 24，给 hour 数字标签 (0/6/12/18) 留出
+    // 完整的绘制区域，不再被 widget 边缘裁切。
+    const int bottomLabelArea = 22;
     QRect chartR(rect().left() + 8, rect().top() + topOffset,
-                 rect().width() - 16, rect().height() - topOffset - 8);
+                 rect().width() - 16, rect().height() - topOffset - bottomLabelArea);
 
     qint64 maxMin = 0;
     for (const auto &b : m_buckets)
@@ -76,9 +79,9 @@ void RhythmCardWidget::paintEvent(QPaintEvent *) {
         if (m_buckets[i].hour % 6 == 0) {
             p.setPen(theme.textSecondary());
             QFont f = font();
-            f.setPointSize(8);
+            f.setPointSize(10);  // ~13px (hour markers)
             p.setFont(f);
-            QRectF lr(x - 8, chartR.bottom() + 2, slotW + 8, 14);
+            QRectF lr(x - 8, chartR.bottom() + 4, slotW + 8, 18);
             p.drawText(lr, Qt::AlignCenter, QString::number(m_buckets[i].hour));
         }
     }

@@ -1,5 +1,6 @@
 #include "MotivationWidget.h"
 #include "../Theme.h"
+#include "../FontLoader.h"
 #include "../../core/Database.h"
 #include "../../core/I18n.h"
 
@@ -53,10 +54,16 @@ MotivationWidget::MotivationWidget(Database *db, QWidget *parent)
     m_quoteLab->setObjectName("QuoteLab");
     m_quoteLab->setWordWrap(true);
     QFont qf;
-    qf.setPointSize(15);
-    qf.setWeight(QFont::DemiBold);
-    // V4: drop italic — Italic + Chinese was a known smell
+    // V4.2 #6 — slogan now uses Smiley Sans (得意黑) at ~36px for the
+    // "mature, punchy headline" feel the user asked for.
+    QString slogenFam = FontLoader::slogenFamily();
+    if (!slogenFam.isEmpty()) qf.setFamily(slogenFam);
+    qf.setPointSize(27);   // ~36px @ 96dpi
+    qf.setWeight(QFont::Bold);
+    qf.setLetterSpacing(QFont::AbsoluteSpacing, -0.5);
     m_quoteLab->setFont(qf);
+    // V4.2 #2 — give descenders room
+    m_quoteLab->setMinimumHeight(48);
     lay->addWidget(m_quoteLab);
 
     m_attributeLab = new QLabel;
@@ -167,16 +174,51 @@ void MotivationWidget::refresh(const QDateTime &start, const QDateTime &end) {
     auto &t = Theme::instance();
     QString q = pickDailyQuote();
     QStringList parts = q.split('|');
-    m_quoteLab->setText(parts.value(0));
+    QString quoteText = parts.value(0);
+    m_quoteLab->setText(quoteText);
     m_attributeLab->setText(parts.value(1));
 
     QString insight = buildInsight(start, end);
     m_insightLab->setText(insight);
 
     QString brand = t.brand().name();
-    m_quoteLab->setStyleSheet(QString("color:%1;background:transparent;").arg(t.textPrimary().name()));
-    m_attributeLab->setStyleSheet(QString("color:%1;font-size:12px;").arg(t.textSecondary().name()));
-    m_insightLab->setStyleSheet(QString("color:%1;font-size:13px;font-weight:600;").arg(brand));
+
+    // V4.2 #6 — 根据 quote 文本是否包含中文字符选择字体：
+    //   含中文 → Smiley Sans (得意黑) 粗体
+    //   纯英文 → IBM Plex Serif 斜体粗体
+    // 字号必须写进 stylesheet，否则会被全局 QSS cascade 重置为 15px。
+    bool hasChinese = false;
+    for (QChar c : quoteText) {
+        // CJK Unified Ideographs
+        if (c.unicode() >= 0x4E00 && c.unicode() <= 0x9FFF) { hasChinese = true; break; }
+    }
+
+    QString slogenFont;
+    QString italicCss;
+    if (hasChinese) {
+        slogenFont = FontLoader::slogenFamily();         // Smiley Sans
+        if (slogenFont.isEmpty()) slogenFont = FontLoader::cjkFamily();
+        italicCss = "";
+    } else {
+        slogenFont = FontLoader::serifFamily();          // IBM Plex Serif
+        if (slogenFont.isEmpty()) slogenFont = FontLoader::primaryFamily();
+        italicCss = "font-style:italic;";
+    }
+
+    m_quoteLab->setStyleSheet(QString(
+        "color:%1;background:transparent;"
+        "font-family:\"%2\";"
+        "font-size:36px;font-weight:700;%3"
+        "letter-spacing:-0.5px;line-height:1.3;")
+        .arg(t.textPrimary().name())
+        .arg(slogenFont)
+        .arg(italicCss));
+    m_quoteLab->setMinimumHeight(56);  // 36px line + descender breathing room
+
+    m_attributeLab->setStyleSheet(QString("color:%1;background:transparent;font-size:14px;")
+                                       .arg(t.textSecondary().name()));
+    m_insightLab->setStyleSheet(QString("color:%1;background:transparent;font-size:15px;font-weight:600;")
+                                     .arg(brand));
 }
 
 void MotivationWidget::applyTheme() {

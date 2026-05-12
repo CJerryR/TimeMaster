@@ -1,5 +1,6 @@
 #include "ComparisonWidget.h"
 #include "../Theme.h"
+#include "../FontLoader.h"
 #include "../../core/Database.h"
 #include "../../core/I18n.h"
 
@@ -16,8 +17,9 @@ static QFrame *makeMiniCard(QLabel **valueOut, QLabel **captionOut) {
     auto *f = new QFrame;
     f->setObjectName("CompCard");
     auto *lay = new QVBoxLayout(f);
-    lay->setContentsMargins(18, 14, 18, 14);
-    lay->setSpacing(2);
+    // V4.2 #2/#4 — taller card, more breathing room for descenders
+    lay->setContentsMargins(20, 16, 20, 18);
+    lay->setSpacing(4);
 
     auto *cap = new QLabel();
     cap->setObjectName("CompCaption");
@@ -25,8 +27,16 @@ static QFrame *makeMiniCard(QLabel **valueOut, QLabel **captionOut) {
 
     auto *val = new QLabel("—");
     val->setObjectName("CompValue");
-    QFont vf; vf.setPointSize(18); vf.setWeight(QFont::DemiBold);
+    QFont vf;
+    QString numFam = FontLoader::numericFamily();
+    if (!numFam.isEmpty()) vf.setFamily(numFam);
+    vf.setPointSize(21);  // ~28px @ 96dpi (V4.2 §3 section number tier)
+    vf.setWeight(QFont::DemiBold);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    vf.setFeature("tnum", 1);
+#endif
     val->setFont(vf);
+    val->setMinimumHeight(38);
     lay->addWidget(val);
 
     if (valueOut) *valueOut = val;
@@ -162,7 +172,7 @@ void ComparisonWidget::refresh() {
         color = t.textSecondary().name();
     }
     m_deltaLabel->setText(deltaText);
-    m_deltaLabel->setStyleSheet(QString("color:%1;font-size:13px;font-weight:500;").arg(color));
+    m_deltaLabel->setStyleSheet(QString("color:%1;font-size:14px;font-weight:600;").arg(color));
 }
 
 void ComparisonWidget::applyTheme() {
@@ -178,36 +188,47 @@ void ComparisonWidget::applyTheme() {
             border: 1px solid %2;
             border-radius: 12px;
         }
+        /* V4.2 #9 — drop the brand-tinted future pane (was too candy-coloured
+           against the new mature flat layout). Both panes share the same
+           neutral container; the "next 7 days" identity comes from the header
+           label color instead. */
         QFrame#CompPaneFuture {
-            background: %5;
+            background: %1;
         }
         QLabel#CompHeader {
             color: %3;
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 600;
+            letter-spacing: -0.1px;
         }
         QFrame#CompCard {
             background: %1;
             border: 1px solid %2;
-            border-radius: 8px;
-        }
-        QFrame#CompPaneFuture QFrame#CompCard {
-            background: %1;
+            border-radius: 10px;
         }
         QLabel#CompValue {
             color: %3;
             background: transparent;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
         }
         QLabel#CompCaption {
             color: %4;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 500;
         }
     )")
     .arg(cardBg)
     .arg(strokeR)
     .arg(textPrim)
-    .arg(textSec)
-    .arg(t.brandLight().name()));
+    .arg(textSec));
+
+    // V4.2 #9 — future pane header gets brand accent, the rest stays neutral
+    if (m_futHeader) {
+        m_futHeader->setStyleSheet(QString("color:%1;font-size:15px;font-weight:600;letter-spacing:-0.1px;")
+                                       .arg(t.brand().name()));
+    }
 }
 
 } // namespace timemaster

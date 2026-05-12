@@ -11,8 +11,11 @@ class QComboBox;
 class QSpinBox;
 class QButtonGroup;
 class QPushButton;
+class QLabel;
 
 namespace timemaster {
+
+class FlowLayout;
 
 class EventDialog : public QDialog {
     Q_OBJECT
@@ -34,10 +37,10 @@ private slots:
     void onColorClicked(int idx);
     void onSubmit();
     void onDeleteClicked();
+    void applyTheme();
 
 private:
     void buildUi();
-    void applyTheme();
     void refreshColorButtons();
     void refreshCategoryButtons();
     void refreshPriorityButtons();
@@ -49,21 +52,25 @@ private:
     EventSource m_source = EventSource::Manual;
     QDateTime m_createdAt;
 
-    QLineEdit *m_titleEdit;
-    QLineEdit *m_locationEdit;
-    QPlainTextEdit *m_descriptionEdit;
-    QDateTimeEdit *m_startEdit;
-    QDateTimeEdit *m_endEdit;
-    QCheckBox *m_allDayCheck;
-    QSpinBox *m_reminderSpin;
+    QLabel *m_titleLabel = nullptr;          // V4.3 #2 — 显式持有以便主题切换刷新
+    QLineEdit *m_titleEdit = nullptr;
+    QLineEdit *m_locationEdit = nullptr;
+    QPlainTextEdit *m_descriptionEdit = nullptr;
+    QDateTimeEdit *m_startEdit = nullptr;
+    QDateTimeEdit *m_endEdit = nullptr;
+    QCheckBox *m_allDayCheck = nullptr;
+    QSpinBox *m_reminderSpin = nullptr;
 
     QList<QPushButton *> m_categoryButtons;
     QList<QPushButton *> m_priorityButtons;
     QList<QPushButton *> m_colorButtons;
 
-    QPushButton *m_submitButton;
-    QPushButton *m_cancelButton;
-    QPushButton *m_deleteButton;
+    FlowLayout *m_categoryFlow = nullptr;     // V4.3 #4
+    FlowLayout *m_colorFlow    = nullptr;
+
+    QPushButton *m_submitButton = nullptr;
+    QPushButton *m_cancelButton = nullptr;
+    QPushButton *m_deleteButton = nullptr;
 
     EventCategory m_selectedCategory = EventCategory::Work;
     EventPriority m_selectedPriority = EventPriority::Normal;

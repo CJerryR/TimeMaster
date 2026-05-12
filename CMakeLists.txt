@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(TimeMaster VERSION 3.2.0 LANGUAGES CXX)
+project(TimeMaster VERSION 4.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,6 +39,10 @@ set(APP_SOURCES
     # Utils
     src/utils/MarkdownToHtml.h
     src/utils/MarkdownToHtml.cpp
+
+    # V4.3 — global runtime preferences (week-start, AI permissions)
+    src/core/Preferences.h
+    src/core/Preferences.cpp
 
     # UI infra (字体 + 自绘图标)
     src/ui/FontLoader.h
@@ -96,6 +100,10 @@ set(APP_SOURCES
     src/ui/widgets/EmptyState.h
     src/ui/widgets/EmptyState.cpp
     src/ui/widgets/ShadowEffect.h
+
+    # V4.3 — FlowLayout for wrap-on-overflow chip rows (category, color)
+    src/ui/widgets/FlowLayout.h
+    src/ui/widgets/FlowLayout.cpp
 )
 
 # ---- 可选资源（字体 + 图标 SVG） ----

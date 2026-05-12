@@ -2,7 +2,22 @@
 
 一款桌面端日程管理与时间分析工具，基于 Qt 6 + C++17 构建，使用 DeepSeek 模型把自然语言转成结构化日程。
 
-![brand-red](https://img.shields.io/badge/brand-%23ef4444-ef4444) ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![Qt6](https://img.shields.io/badge/Qt-6-41cd52) ![SQLite](https://img.shields.io/badge/storage-SQLite-003B57)
+**当前版本：V4.3** — 见 [CHANGES_V4_3.md](CHANGES_V4_3.md) 了解本轮全部 11 条用户反馈的改动。
+
+![brand-red](https://img.shields.io/badge/brand-%23D97757-D97757) ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![Qt6](https://img.shields.io/badge/Qt-6-41cd52) ![SQLite](https://img.shields.io/badge/storage-SQLite-003B57)
+
+---
+
+## V4.3 亮点
+
+- 🤖 **AI 直接操作日历**（审批式操作）— 让 AI 在对话中增删改日程，每条变更弹审批卡，可以「允许此次 / 总是允许 / 拒绝」，所有动作进入历史抽屉，支持撤销。
+- 📅 **周一 / 周日开始可选** — 设置里一键切换，月 / 周视图同步。
+- 📊 **分析页加 All time 范围 + 刷新反馈** — 默认显示全部时间数据（之前 Last 7 漏掉未来事件），刷新后显示"已更新到 HH:mm:ss"。
+- 🎨 **EventDialog 全面修复** — 颜色 12 色齐全（之前 Brown/Gray/Cyan 看不见）、深色模式不再白底、类别行自动换行、文字不再重叠。
+- 📐 **响应式设置面板** — 1366×768 笔电屏不再撑爆，底部按钮永远可见。
+- 👀 **空状态卡片真实可见** — 不再融进背景。
+- 📏 **短日程最小高度 36px** — 15 分钟会议也能看到完整标题 + 时间。
+- 🔗 **月视图 +N 跳转到日视图** — 不再开第二个弹窗。
 
 ---
 
@@ -10,8 +25,9 @@
 
 ### 📅 日历
 - 月 / 周 / 日 三种视图，键盘 `1` / `2` / `3` 切换，`←` `→` 翻页，`T` 回到今天。
-- 6 种类别、3 个优先级、9 种颜色标签；周末自动标红。
-- 当前时间线、今日高亮、事件溢出折叠为「+ N 更多」。
+- 8 种类别、3 个优先级、**12 种颜色**标签；周末自动标红。
+- 当前时间线、今日高亮、事件溢出折叠为「+ N 更多」，点击直接跳到日视图。
+- 周起始日可选（周一 or 周日）。
 
 ### ✨ AI 自然语言导入
 - 顶部输入框写一句话，按 Enter：
@@ -19,36 +35,31 @@
 - AI 拆出多条结构化日程，**逐条勾选**后再导入，避免误导入。
 - 每次导入自动写入一个**导入批次**，可整批撤销。
 
-### 🕐 AI 导入历史（新）
+### 🕐 AI 导入历史
 - 顶部 **🕐 导入历史** 按钮（或 `Ctrl+Z`）打开历史面板。
-- 左侧：所有 AI 导入批次，按时间倒序、含原文预览和事件数。
-- 右侧：当前批次的全部事件。
-- 三种动作：
-  - **撤销整批** — 一键删除该批次的所有事件（不可恢复）。
-  - **仅清理历史记录** — 保留事件，仅清掉导入记录（用于「确认无误后归档」）。
-  - **删除选中事件** — 单条删除。
+- 三种动作：**撤销整批** / **仅清理历史记录** / **删除选中事件**。
 
-### 💬 AI 对话（带日历感知）
+### 💬 AI 对话（带日历感知 + 操作权限）
 - 默认开启「让 AI 看到我的日历」开关。
-- 每次提问时，自动把**过去 7 天 + 未来 14 天**内的日程压缩成紧凑文本注入到模型上下文。
-- 因此可以这样问：
-  - 「我下周三有什么安排？」
-  - 「这周哪天最忙？给我减负建议」
-  - 「明天上午有空吗？」
-- 流式输出，气泡 UI。
+- 每次提问时，自动把可配置范围（默认过去 7 天 + 未来 14 天）的日程注入到模型上下文。
+- **V4.3 新：AI 可以请求增 / 删 / 改日程** — 每个动作弹审批卡，三个按钮：
+  - 「允许此次」— 执行一次；
+  - 「总是允许」— 持久化此类型自动批准（可在设置中关闭）；
+  - 「拒绝」— 不入库；
+- 顶栏「操作历史」抽屉两列展示最近被允许的操作，每行有 ↶ 撤销按钮。
 
 ### 📊 统计分析
 - 7 张卡片 + 图表：总时长、事件数、日均时长、最忙日子；
 - 类别占比环形图、类别时长水平条；
-- 每日趋势折线、节奏热力图（24×7）、来源分布、智能洞察。
+- 每日趋势折线、节奏热力图（24×7）、来源分布、智能洞察；
+- 范围选择：本周 / 本月 / 近 7 天 / 近 30 天 / **全部时间（默认）**；
+- 每次刷新显示"已更新到 HH:mm:ss"。
 
 ### 🎨 视觉 · Warm Paper 设计语言
-- **品牌色** `#D97757`（HSL 17° / 60% / 60%）— 暖橙褐，唤起信任与非侵略性。
-- **底色** `#F5F2ED` — 模拟自然纸张反射率，比 `#FFFFFF` 少约 15% 蓝光刺激。
-- **文字主色** `#1D1C16` — 黑里带暖棕调，对比比约 12.6:1，符合 WCAG AA。
-- **几何规范** 8pt 网格基数；小组件 8px 圆角，卡片 16px，对话框 16-24px。
-- **质感** 卡片采用 `rgba` 半透明叠加底层纸张渐变，配合左上 / 右下双光晕（橙 + 茶绿），层次感来自光散射而非阴影。
-- 浅 / 深双主题（深色为暖调 `#262521`，非冷黑），左下角一键切换。
+- **品牌色** `#D97757`（HSL 17° / 60% / 60%）— 暖橙褐。
+- **底色** `#F5F2ED` — 模拟自然纸张反射率。
+- **文字主色** `#1D1C16` — 黑里带暖棕调，对比 ~12.6:1（WCAG AA）。
+- 浅 / 深双主题，深色为暖调 `#262521`。
 
 ---
 
@@ -58,7 +69,7 @@
 %LOCALAPPDATA%\TimeMaster\timemaster.db
 ```
 
-SQLite 单文件，备份它即可保留全部数据。
+SQLite 单文件。V4.3 增加 `chat_actions` 表存储 AI 操作审计日志。
 
 ## 技术栈
 
@@ -79,41 +90,42 @@ SQLite 单文件，备份它即可保留全部数据。
 build_windows.bat
 ```
 
-脚本会自动找 Qt、调用 MSVC、运行 `windeployqt`，最终产物在 `build\Release\TimeMaster.exe`。
-
 ## 项目结构
 
 ```
 time-master/
 ├── CMakeLists.txt
-├── build_windows.bat         # 一键 Windows 构建
-├── BUILD_WINDOWS.md          # Windows 编译指南
 ├── README.md
+├── CHANGES_V4_3.md
 └── src/
     ├── main.cpp
     ├── core/
-    │   ├── Types.{h,cpp}     # 数据模型 + 枚举（含 AiBatchInfo）
-    │   ├── Database.{h,cpp}  # SQLite 持久层（含 ai_batches 表）
-    │   └── DeepSeekClient.{h,cpp}  # API 客户端（含 calendar context 注入）
+    │   ├── Types.{h,cpp}        # 数据模型 + 枚举 (+ ChatAction)
+    │   ├── Database.{h,cpp}     # SQLite 持久层 (+ chat_actions 表)
+    │   ├── DeepSeekClient.{h,cpp}
+    │   ├── I18n.{h,cpp}         # 中英双语
+    │   └── Preferences.{h,cpp}  # ★ V4.3 新：周起始 + AI 权限
+    ├── utils/
+    │   └── MarkdownToHtml.{h,cpp}
     └── ui/
-        ├── Theme.{h,cpp}                # 双主题 + 半透明色板
-        ├── MainWindow.{h,cpp}           # 顶层窗口 + 渐变背景层
-        ├── Sidebar.{h,cpp}              # 左侧导航
-        ├── CalendarPage.{h,cpp}         # 日历主页
-        ├── AnalyticsPage.{h,cpp}        # 分析页
-        ├── ChatPage.{h,cpp}             # AI 对话（含 calendar context）
-        ├── AiHistoryDialog.{h,cpp}      # ★ 新：AI 导入历史
-        ├── EventDialog.{h,cpp}          # 新建 / 编辑事件
-        ├── SettingsDialog.{h,cpp}       # 设置
-        ├── MonthView.{h,cpp} / TimeGridView.{h,cpp}  # 日历视图
+        ├── Theme.{h,cpp}
+        ├── MainWindow.{h,cpp}
+        ├── Sidebar.{h,cpp}
+        ├── CalendarPage.{h,cpp}
+        ├── AnalyticsPage.{h,cpp}
+        ├── ChatPage.{h,cpp}            # ★ V4.3:AI 审批 + 操作历史
+        ├── AiHistoryDialog.{h,cpp}
+        ├── AiResultsDialog.{h,cpp}
+        ├── EventDialog.{h,cpp}
+        ├── SettingsDialog.{h,cpp}      # ★ V4.3:滚动 + 周起始 + 权限
+        ├── MonthView.{h,cpp}
+        ├── TimeGridView.{h,cpp}
         ├── CategoryPieChart.{h,cpp}
         └── widgets/
-            ├── StatsCardsWidget
-            ├── HorizontalBarChart
-            ├── DailyTrendChart
-            ├── RhythmCardWidget
-            ├── SourceDistributionWidget
-            └── InsightsWidget
+            ├── StatsCardsWidget, HorizontalBarChart, DailyTrendChart
+            ├── RhythmCardWidget, SourceDistributionWidget, InsightsWidget
+            ├── ComparisonWidget, MotivationWidget, EmptyState
+            └── FlowLayout                # ★ V4.3 新:自动换行布局
 ```
 
 ## 快捷键
@@ -131,3 +143,4 @@ time-master/
 ## 许可
 
 仅供个人学习与使用。
+

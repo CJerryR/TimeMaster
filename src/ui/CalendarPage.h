@@ -7,7 +7,6 @@ class QStackedWidget;
 class QLabel;
 class QLineEdit;
 class QPushButton;
-class QDialog;
 
 namespace timemaster {
 
@@ -18,11 +17,13 @@ class TimeGridView;
 class EmptyState;
 
 /**
- * V4 calendar page.
- *  · Header (single row): [<] [>] Title [Today]    [Day|Week|Month]  [+ New Event]
- *  · AI parse input moved to a Ctrl+K Spotlight-style QDialog (no longer always-on bar)
- *  · Empty state overlay (EmptyState) when no events exist; the grid is dimmed underneath
- *  · No "← start from here" arrow hint widget (deleted per V4 § 4.1)
+ * V4.1 calendar page.
+ *  · Row 1 header: [<] [>] Title [Today]    [Day|Week|Month]  [+ New Event]
+ *  · Row 2 (always visible): compact AI parse input + [History] button
+ *  · Row 3 (expandable, hidden by default): full input + [Parse] + [X] +
+ *    status/hint. Triggered by clicking the compact bar OR pressing Ctrl+K.
+ *    Auto-collapses on focus loss or X click.
+ *  · Empty state overlay (EmptyState) when no events exist.
  */
 class CalendarPage : public QWidget {
     Q_OBJECT
@@ -36,6 +37,11 @@ public:
     void goNext();
     void goPrev();
     void openCreateDialog(const QDateTime &dt = QDateTime());
+
+protected:
+    bool eventFilter(QObject *o, QEvent *e) override;
+    void resizeEvent(QResizeEvent *e) override;
+    void mousePressEvent(QMouseEvent *e) override;
 
 public slots:
     void refresh();
@@ -54,15 +60,17 @@ private slots:
     void applyTheme();
     void applyLanguage();
 
-    void openCmdKPalette();
+    void expandAiPanel();
+    void collapseAiPanel();
 
 private:
     void buildUi();
-    void buildCmdKDialog();
     void updateHeader();
     void switchViewWidget();
     void insertTemplate(int which);
     QString monthName(int month) const;
+    // V4.2 #5: position the floating Spotlight-style popup below the compact pill.
+    void positionAiPopup();
 
     Database *m_db;
     DeepSeekClient *m_ai;
@@ -72,7 +80,7 @@ private:
     QList<CalendarEvent> m_events;
     QString m_pendingParseText;
 
-    // header
+    // header row 1
     QLabel      *m_titleLabel  = nullptr;
     QPushButton *m_btnDay      = nullptr;
     QPushButton *m_btnWeek     = nullptr;
@@ -82,14 +90,19 @@ private:
     QPushButton *m_btnToday    = nullptr;
     QPushButton *m_btnAdd      = nullptr;
 
-    // Ctrl+K palette
-    QDialog     *m_cmdKDialog   = nullptr;
+    // row 2: always-visible compact AI bar
+    QWidget     *m_aiBar          = nullptr;
+    QLineEdit   *m_aiCompactInput = nullptr;
+    QPushButton *m_historyButton  = nullptr;
+
+    // row 3: expandable AI panel
+    QWidget     *m_aiExpanded   = nullptr;
+    QLabel      *m_aiPanelTitle = nullptr;
     QLineEdit   *m_parseInput   = nullptr;
     QPushButton *m_parseButton  = nullptr;
-    QPushButton *m_historyButton= nullptr;
+    QPushButton *m_aiCloseBtn   = nullptr;
+    QLabel      *m_aiHintLabel  = nullptr;
     QLabel      *m_parseStatus  = nullptr;
-    QLabel      *m_cmdKTitle    = nullptr;
-    QLabel      *m_cmdKHint     = nullptr;
 
     QStackedWidget *m_stack     = nullptr;
     MonthView      *m_monthView = nullptr;
