@@ -299,21 +299,9 @@ void MonthView::mousePressEvent(QMouseEvent *e) {
             return;
         }
     }
-    // V4.4 #2 — 单击格子（没点到事件、没点到 +N）直接跳到对应日视图。
-    // 之前是双击触发，但用户操作"看那天"明显比"新建"频率高，单击应该
-    // 给主要操作。新建事件保留 Ctrl+N / 右上角按钮 / 日视图双击空白这三个入口。
-    for (const auto &cell : m_cells) {
-        if (cell.rect.contains(e->pos())) {
-            emit dateClicked(cell.date);
-            return;
-        }
-    }
 }
 
 void MonthView::mouseDoubleClickEvent(QMouseEvent *e) {
-    // V4.4 #2 — 双击空白格依旧 emit dateClicked，但 CalendarPage 端会判同
-    // 当前 view（已经在 Day mode 则不重复切，可以接着触发新建事件）。这样
-    // 老用户的双击习惯也不会突然 silent fail。
     if (e->button() != Qt::LeftButton) return;
     for (const auto &cell : m_cells) {
         if (cell.rect.contains(e->pos())) {
