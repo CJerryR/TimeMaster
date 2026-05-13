@@ -14,22 +14,28 @@
 
 namespace timemaster {
 
+// 日历视图模式：日视图 / 周视图 / 月视图
 enum class CalendarView { Day, Week, Month };
 
+// 事件分类：工作 / 学习 / 娱乐 / 运动 / 休息 / 社交 / 个人 / 其他
 enum class EventCategory {
     Work, Study, Entertainment, Exercise,
     Rest, Social, Personal, Other
 };
 
+// 事件优先级：紧急 / 普通 / 低优先级
 enum class EventPriority { Urgent, Normal, Low };
 
+// 事件颜色枚举（共 12 种色值，亮色/暗色主题各有一套映射）
 enum class EventColor {
     Red, Orange, Yellow, Green, Teal, Blue,
     Indigo, Purple, Pink, Brown, Gray, Cyan
 };
 
+// 事件来源：手动创建 / AI 解析导入 / 聊天生成
 enum class EventSource { Manual, AiParse, Chat };
 
+// 调色板结构：包含背景色、文字色、边框色和颜色名称标签
 struct ColorPalette {
     QColor bg;
     QColor text;
@@ -37,6 +43,7 @@ struct ColorPalette {
     QString label;
 };
 
+// 日历事件（单条日程），包含标题、时间、分类、颜色、优先级等信息
 struct CalendarEvent {
     QString id;
     QString title;
@@ -54,11 +61,13 @@ struct CalendarEvent {
     QDateTime createdAt;
     QDateTime updatedAt;
 
+    // 计算事件持续时长（分钟），由 startDate 与 endDate 的差值得出
     qint64 durationMinutes() const {
         return startDate.secsTo(endDate) / 60;
     }
 };
 
+// AI 日程建议，由 DeepSeek 解析用户输入后生成，可手动确认转为正式事件
 struct ScheduleSuggestion {
     QString title;
     QString description;
@@ -92,6 +101,7 @@ struct ChatAction {
     QDateTime createdAt;
 };
 
+// 分类统计：按事件类别汇总的总分钟数、事件数及占比
 struct CategoryStat {
     EventCategory category;
     qint64 totalMinutes = 0;
@@ -99,40 +109,58 @@ struct CategoryStat {
     double percentage = 0.0;
 };
 
+// 日汇总：某日的总时长（分钟）与事件数量
 struct DailySummary {
     QDate date;
     qint64 totalMinutes = 0;
     int count = 0;
 };
 
+// 小时桶：按小时聚合的时长数据，用于热力图或趋势图
 struct HourlyBucket {
     int hour = 0;
     qint64 totalMinutes = 0;
 };
 
 // ---- 颜色映射（亮色 + 暗色主题分别有一套） ----
+// 返回亮色主题下每种 EventColor 对应的调色板（bg/text/border）
 QHash<EventColor, ColorPalette> eventColorsLight();
+// 返回暗色主题下每种 EventColor 对应的调色板（bg/text/border）
 QHash<EventColor, ColorPalette> eventColorsDark();
 
 // ---- 字符串转换 ----
+// 将事件分类转为内部存储用的英文 key
 QString categoryToString(EventCategory c);
+// 将事件分类转为当前语言环境下的显示文本
 QString categoryLabel(EventCategory c);
+// 将英文 key 字符串解析回 EventCategory 枚举
 EventCategory stringToCategory(const QString &s);
 
+// 将事件颜色转为内部存储用的英文名称
 QString colorToString(EventColor c);
+// 将英文名称字符串解析回 EventColor 枚举
 EventColor stringToColor(const QString &s);
 
+// 将事件优先级转为内部存储用的英文 key
 QString priorityToString(EventPriority p);
+// 将事件优先级转为当前语言环境下的显示文本
 QString priorityLabel(EventPriority p);
+// 将英文 key 字符串解析回 EventPriority 枚举
 EventPriority stringToPriority(const QString &s);
 
+// 将事件来源转为内部存储用的英文 key
 QString sourceToString(EventSource s);
+// 将英文 key 字符串解析回 EventSource 枚举
 EventSource stringToSource(const QString &s);
 
+// 返回所有事件分类的列表（遍历用）
 QList<EventCategory> allCategories();
+// 返回所有事件颜色的列表（遍历用）
 QList<EventColor> allColors();
+// 返回所有事件优先级的列表（遍历用）
 QList<EventPriority> allPriorities();
 
+// 返回事件分类的默认推荐颜色
 EventColor categoryDefaultColor(EventCategory c);
 
 } // namespace timemaster

@@ -14,15 +14,18 @@
 
 namespace timemaster {
 
+// 构造函数：设置最小高度 160px
 DailyTrendChart::DailyTrendChart(QWidget *parent) : QWidget(parent) {
     setMinimumHeight(160);
 }
 
+// 设置每日统计摘要并触发重绘
 void DailyTrendChart::setData(const QList<DailySummary> &daily) {
     m_daily = daily;
     update();
 }
 
+// 自绘：每日垂直柱状条，今日使用品牌色高亮，显示日期和刻标
 void DailyTrendChart::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);

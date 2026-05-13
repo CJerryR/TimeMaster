@@ -18,6 +18,7 @@
 
 namespace timemaster {
 
+// 构造函数：初始化分钟定时器，连接语言和周起始日变化信号
 TimeGridView::TimeGridView(Mode mode, QWidget *parent)
     : QWidget(parent), m_mode(mode)
 {
@@ -38,18 +39,21 @@ TimeGridView::TimeGridView(Mode mode, QWidget *parent)
     });
 }
 
+// 设置当前日期并触发重建和重绘
 void TimeGridView::setCurrentDate(const QDate &date) {
     m_currentDate = date;
     rebuildLayout();
     update();
 }
 
+// 设置事件列表并触发重建和重绘
 void TimeGridView::setEvents(const QList<CalendarEvent> &events) {
     m_events = events;
     rebuildLayout();
     update();
 }
 
+// 滚动视图到指定小时位置（使得该小时位于视口上方四分之一处）
 void TimeGridView::scrollToHour(int hour) {
     int viewportH = height() - m_headerHeight - m_allDayBandHeight;
     int target = hour * m_hourHeight - viewportH / 4;
@@ -60,6 +64,7 @@ void TimeGridView::scrollToHour(int hour) {
     update();
 }
 
+// 返回当前视图可见日期列表：日模式2天，周模式7天
 QList<QDate> TimeGridView::visibleDays() const {
     // V4.2 #11: Day mode shows 2 days side-by-side.
     if (m_mode == DayMode) return { m_currentDate, m_currentDate.addDays(1) };
@@ -70,8 +75,10 @@ QList<QDate> TimeGridView::visibleDays() const {
     return days;
 }
 
+// 每分钟触发：更新时间红线
 void TimeGridView::onMinuteTick() { update(); }
 
+// 重建布局：计算全天事件带高度，分配所有事件矩形位置
 void TimeGridView::rebuildLayout() {
     m_eventRects.clear();
     if (width() <= 0 || height() <= 0) return;
@@ -117,6 +124,7 @@ void TimeGridView::rebuildLayout() {
     }
 }
 
+// 对单日事件进行列分配和坐标计算：排序、冲突检测、列宽均分
 QList<TimeGridView::EventLayout> TimeGridView::layoutDayEvents(const QDate &date, const QRect &dayCol) {
     QList<EventLayout> out;
     QList<CalendarEvent> dayEvents;
@@ -204,6 +212,7 @@ QList<TimeGridView::EventLayout> TimeGridView::layoutDayEvents(const QDate &date
     return out;
 }
 
+// 绘制时间网格：日期头部、时间轴、背景网格、全天事件带、事件色块、当前时间红线
 void TimeGridView::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
@@ -370,6 +379,12 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         //     V4.4 #3 修的中文笔画裁切。
         //   · 第二行起点 22 → 14，配合标题区缩回；视觉上时间行整体上移约 15px。
         //   · 最小事件高度同步：44 → 30（见 layoutDayEvents 里的最小值 clamp）。
+        // V4.3.3 #3 — 实测短日程的描述行（最后一行）还会被色块底缘 / 圆角遮一部分。
+        // 在 V4.3.2 #3 基础上再把整段文字（含标题 + 时间 + 地点 + 描述）整体上移
+        // 3px。AlignTop 把标题 cap-line 上移到 r.top()-3，相对 r.top() 的 18px
+        // 标题矩形高度不变（也就是矩形底也跟着上移 3px），所以标题底部 CJK 笔画
+        // 距矩形底的余量与上版相同，没有引入新的顶部裁切；同时下方所有行连带
+        // 上移 3px，给"下面"留出 3px 余量。
         QRect tr(r.left() + 10, r.top(), r.width() - 14, r.height() - 2);
         p.setPen(c.text);
 
@@ -377,12 +392,19 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         p.setFont(f);
         QFontMetrics fm(f);
         QString title = fm.elidedText(er.event.title, Qt::ElideRight, tr.width());
-        p.drawText(QRect(tr.left(), tr.top(), tr.width(), 18),
+        // V4.3.3 #3 — 标题 y 由 tr.top() → tr.top() - 3。仅对时间网格里的
+        // 多行时段事件生效；全天事件（all-day band，色块只有 20px 高、只有
+        // 一行标题）没有"下面被遮挡"的问题，再上移反而会让 cap 浮在色块
+        // 上方，所以保持原位。
+        int titleYAdj = er.event.allDay ? 0 : -3;
+        p.drawText(QRect(tr.left(), tr.top() + titleYAdj, tr.width(), 18),
                    Qt::AlignLeft | Qt::AlignTop, title);
 
         if (!er.event.allDay) {
             // V4.3.2 #3 — 第二行起点从 +22 改到 +14，整体上移
-            int yCursor = tr.top() + 14;
+            // V4.3.3 #3 — 在 V4.3.2 基础上再 -3，下游行（地点 / 描述）通过
+            // kRowH 累加，会自然跟着上移 3px。
+            int yCursor = tr.top() + 11;
             const int kRowH = 14;
 
             if (r.height() > 24) {
@@ -447,11 +469,13 @@ void TimeGridView::paintEvent(QPaintEvent *) {
     }
 }
 
+// 尺寸变化时重建布局并重绘
 void TimeGridView::resizeEvent(QResizeEvent *) {
     rebuildLayout();
     update();
 }
 
+// 鼠标按下：检测事件点击
 void TimeGridView::mousePressEvent(QMouseEvent *e) {
     if (e->button() != Qt::LeftButton) return;
     for (const auto &er : m_eventRects) {
@@ -464,12 +488,14 @@ void TimeGridView::mousePressEvent(QMouseEvent *e) {
     }
 }
 
+// 鼠标双击：检测时间槽点击并触发新建事件信号
 void TimeGridView::mouseDoubleClickEvent(QMouseEvent *e) {
     if (e->button() != Qt::LeftButton) return;
     QDateTime dt = hitTimeSlot(e->pos());
     if (dt.isValid()) emit timeSlotClicked(dt);
 }
 
+// 根据鼠标位置计算对应的时间槽（日期+整点小时）
 QDateTime TimeGridView::hitTimeSlot(const QPoint &pos) const {
     int gridLeft = m_timeGutter;
     int gridTop = m_headerHeight + m_allDayBandHeight;
@@ -485,6 +511,7 @@ QDateTime TimeGridView::hitTimeSlot(const QPoint &pos) const {
     return QDateTime(days[colIdx], QTime(hour, 0, 0));
 }
 
+// 鼠标移动：显示事件详情ToolTip
 void TimeGridView::mouseMoveEvent(QMouseEvent *e) {
     for (const auto &er : m_eventRects) {
         QRect r = er.rect;
@@ -508,6 +535,7 @@ void TimeGridView::mouseMoveEvent(QMouseEvent *e) {
     QToolTip::hideText();
 }
 
+// 滚轮事件：Ctrl+滚轮缩放行高，普通滚轮垂直滚动视图
 void TimeGridView::wheelEvent(QWheelEvent *e) {
     int dy = e->angleDelta().y();
 
@@ -546,6 +574,7 @@ void TimeGridView::wheelEvent(QWheelEvent *e) {
     e->accept();
 }
 
+// 鼠标离开：隐藏ToolTip
 void TimeGridView::leaveEvent(QEvent *) { QToolTip::hideText(); }
 
 } // namespace timemaster

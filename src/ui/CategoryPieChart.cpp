@@ -14,15 +14,18 @@
 
 namespace timemaster {
 
+// 构造函数：设置最小尺寸
 CategoryPieChart::CategoryPieChart(QWidget *parent) : QWidget(parent) {
     setMinimumSize(200, 200);
 }
 
+// 设置统计数据：保存并触发重绘
 void CategoryPieChart::setStats(const QList<CategoryStat> &stats) {
     m_stats = stats;
     update();
 }
 
+// 绘制环形饼图：按各类别时长占比画扇形，中空为圆环
 void CategoryPieChart::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);

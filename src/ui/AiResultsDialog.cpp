@@ -23,6 +23,7 @@ namespace timemaster {
 // ----- 单条解析建议的行 widget -----
 class AiSuggestionRow : public QFrame {
 public:
+    // 构造函数：勾选框 + 标题/元信息 + 编辑/删除按钮
     AiSuggestionRow(QWidget *parent = nullptr) : QFrame(parent) {
         setObjectName("AiSuggestionRow");
         auto *lay = new QHBoxLayout(this);
@@ -60,6 +61,7 @@ public:
         lay->addWidget(delBtn);
     }
 
+    // 用建议数据填充行内容：标题 / 时间 / 类别 / 优先级
     void setSuggestion(const ScheduleSuggestion &s) {
         titleLab->setText(s.title.isEmpty() ? I18n::t("ai.results.untitled") : s.title);
         QString time = s.allDay
@@ -70,6 +72,7 @@ public:
         metaLab->setText(meta);
     }
 
+    // 应用主题样式：设置行背景、文字颜色、按钮图标
     void applyStyle() {
         auto &t = Theme::instance();
         QColor fg = t.textSecondary();
@@ -122,6 +125,7 @@ public:
 // AiResultsDialog
 // ============================================================
 
+// 构造函数：接收建议列表，初始化勾选状态并构建 UI
 AiResultsDialog::AiResultsDialog(QList<ScheduleSuggestion> items, QWidget *parent)
     : QDialog(parent), m_items(std::move(items))
 {
@@ -138,6 +142,7 @@ AiResultsDialog::AiResultsDialog(QList<ScheduleSuggestion> items, QWidget *paren
     applyTheme();
 }
 
+// 构建界面：标题行 + 统计摘要 + 全选按钮 + 滚动列表 + 底部确认取消
 void AiResultsDialog::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(22, 20, 22, 18);
@@ -195,6 +200,7 @@ void AiResultsDialog::buildUi() {
     rebuildRows();
 }
 
+// 重建所有行：清空后根据 m_items 和 m_checked 重绘
 void AiResultsDialog::rebuildRows() {
     // 清空已有
     for (auto *w : m_rowWidgets) {
@@ -240,6 +246,7 @@ void AiResultsDialog::rebuildRows() {
     }
 }
 
+// 编辑第 index 条建议：打开 EventDialog 修改并更新
 void AiResultsDialog::onEditRow(int index) {
     if (index < 0 || index >= m_items.size()) return;
     const auto &s = m_items[index];
@@ -286,6 +293,7 @@ void AiResultsDialog::onEditRow(int index) {
     }
 }
 
+// 删除第 index 条建议：移除并重建行列表
 void AiResultsDialog::onDeleteRow(int index) {
     if (index < 0 || index >= m_items.size()) return;
     m_items.removeAt(index);
@@ -293,6 +301,7 @@ void AiResultsDialog::onDeleteRow(int index) {
     rebuildRows();
 }
 
+// 全选 / 全不选切换：更新所有勾选框和按钮文字
 void AiResultsDialog::onToggleAll() {
     bool anyUnchecked = false;
     for (bool v : m_checked) if (!v) { anyUnchecked = true; break; }
@@ -307,6 +316,7 @@ void AiResultsDialog::onToggleAll() {
                                     : I18n::t("ai.results.select_all"));
 }
 
+// 获取所有勾选的建议列表
 QList<ScheduleSuggestion> AiResultsDialog::selectedSuggestions() const {
     QList<ScheduleSuggestion> out;
     for (int i = 0; i < m_items.size(); ++i) {
@@ -315,6 +325,7 @@ QList<ScheduleSuggestion> AiResultsDialog::selectedSuggestions() const {
     return out;
 }
 
+// 应用主题：设置弹窗 QSS 并刷新所有行样式
 void AiResultsDialog::applyTheme() {
     auto &t = Theme::instance();
     // V4.3 #2 — 同 EventDialog：显式设置 QDialog 背景，否则黑暗模式下 Qt 默认

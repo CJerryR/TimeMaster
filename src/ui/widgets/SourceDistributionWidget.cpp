@@ -15,6 +15,7 @@
 
 namespace timemaster {
 
+// 构造函数：创建标题标签和来源条形图组件
 SourceDistributionWidget::SourceDistributionWidget(QWidget *parent) : QWidget(parent) {
     auto *lay = new QVBoxLayout(this);
     lay->setContentsMargins(0, 0, 0, 0);
@@ -29,16 +30,19 @@ SourceDistributionWidget::SourceDistributionWidget(QWidget *parent) : QWidget(pa
     });
 }
 
+// 转发三类数据给内部 SourceBar
 void SourceDistributionWidget::setSources(int manual, int ai, int imported) {
     m_bar->setSources(manual, ai, imported);
 }
 
 // ---- SourceBar ----
 
+// 构造函数：设置最小高度 72px
 SourceBar::SourceBar(QWidget *parent) : QWidget(parent) {
     setMinimumHeight(72);   // V4.2: was 40, room for bar + legend below
 }
 
+// 设置三类来源计数并触发重绘
 void SourceBar::setSources(int manual, int ai, int imported) {
     m_manual = manual;
     m_ai = ai;
@@ -46,6 +50,7 @@ void SourceBar::setSources(int manual, int ai, int imported) {
     update();
 }
 
+// 自绘：按比例绘制三段彩色条形及下方图例
 void SourceBar::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
@@ -100,6 +105,7 @@ void SourceBar::paintEvent(QPaintEvent *) {
             timemaster::I18n::t("widget.source.import_fmt").arg(int(rImport * 100)));
 }
 
+// 绘制单段：左段四角圆角，中/右段仅右侧圆角避免拼接缝隙
 void SourceBar::drawSegment(QPainter &p, int x, int y, int w, int h, QColor c, bool left) {
     if (w <= 0) return;
     // FIX (V4.2): 原来的 path 用 OddEvenFill 默认规则，叠加同一个 addRoundedRect
@@ -118,6 +124,7 @@ void SourceBar::drawSegment(QPainter &p, int x, int y, int w, int h, QColor c, b
     }
 }
 
+// 绘制图例小色块 + 百分比文字
 void SourceBar::drawLegend(QPainter &p, int x, int y, QColor c, const QString &txt) {
     p.setBrush(c);
     p.setPen(Qt::NoPen);

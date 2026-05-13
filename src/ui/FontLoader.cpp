@@ -22,6 +22,7 @@ QString g_slogen;     // V4.2: Smiley Sans
 QString g_serif;      // V4.2: IBM Plex Serif (used for both primary and numeric)
 bool    g_customLoaded = false;
 
+// 注册单个字体文件并返回字体族名称
 QString registerFont(const QString &path) {
     int id = QFontDatabase::addApplicationFont(path);
     if (id < 0) return {};
@@ -30,6 +31,7 @@ QString registerFont(const QString &path) {
     return fams.first();
 }
 
+// 判断字体族名称是否属于中文字体
 bool looksLikeCjk(const QString &fam) {
     return QFontDatabase::writingSystems(fam).contains(QFontDatabase::SimplifiedChinese)
         || fam.contains("Noto Sans") || fam.contains("Source Han") || fam.contains("YaHei")
@@ -38,23 +40,27 @@ bool looksLikeCjk(const QString &fam) {
         || fam.contains("得意黑");
 }
 
+// 判断字体族名称是否属于等宽字体
 bool looksLikeMono(const QString &fam) {
     return fam.contains("Mono", Qt::CaseInsensitive) || fam.contains("Code", Qt::CaseInsensitive)
         || fam.contains("Consolas", Qt::CaseInsensitive);
 }
 
+// 判断是否属于 Slogan 字体（Smiley Sans / 得意黑）
 bool looksLikeSlogen(const QString &fam, const QString &fname) {
     return fam.contains("Smiley", Qt::CaseInsensitive)
         || fname.contains("Smiley", Qt::CaseInsensitive)
         || fam.contains("得意黑");
 }
 
+// 判断是否属于 IBM Plex Serif 字体
 bool looksLikeIbmPlexSerif(const QString &fam, const QString &fname) {
     return (fam.contains("IBM Plex", Qt::CaseInsensitive) && fam.contains("Serif", Qt::CaseInsensitive))
         || fname.contains("IBMPlexSerif", Qt::CaseInsensitive);
 }
 } // namespace
 
+// 初始化字体加载器：搜索内置字体目录、分类注册并设置各字体族
 void FontLoader::initialize() {
     QStringList searchRoots;
     searchRoots << ":/fonts";
@@ -169,23 +175,30 @@ void FontLoader::initialize() {
             << "custom=" << g_customLoaded;
 }
 
+// 获取主显示字体族
 QString FontLoader::primaryFamily() { return g_primary; }
+// 获取中文显示字体族
 QString FontLoader::cjkFamily()     { return g_cjk; }
+// 获取等宽字体族
 QString FontLoader::monoFamily()    { return g_mono; }
+// 获取 Serif 字体族
 QString FontLoader::serifFamily()   { return g_serif; }
 
+// 获取 Slogan 字体族（Smiley Sans 优先，兜底用 CJK）
 QString FontLoader::slogenFamily() {
     // If Smiley Sans wasn't loaded, fall back to a bold CJK font that still feels punchy
     if (!g_slogen.isEmpty()) return g_slogen;
     return g_cjk;
 }
 
+// 获取数字专用字体族（优先 Serif，兜底主字体）
 QString FontLoader::numericFamily() {
     // V4.2 §6: numbers explicitly use IBM Plex Serif (literary/publication look)
     if (!g_serif.isEmpty()) return g_serif;
     return g_primary;
 }
 
+// 构建完整 CSS font-family 回退链（Serif → Primary → CJK → 系统兜底）
 QString FontLoader::familyChain() {
     QStringList chain;
     auto add = [&](const QString &f) {
@@ -209,6 +222,7 @@ QString FontLoader::familyChain() {
     return chain.join(", ");
 }
 
+// 是否加载了自定义字体
 bool FontLoader::customLoaded() { return g_customLoaded; }
 
 } // namespace timemaster

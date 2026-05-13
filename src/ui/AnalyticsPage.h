@@ -28,21 +28,29 @@ class RhythmCardWidget;
 class ComparisonWidget;
 class MotivationWidget;
 
+// 数据分析页：KPI 卡片、趋势图、类别分布、来源占比、节奏热力图、洞察文案、对比面板、Slogan
 class AnalyticsPage : public QWidget {
     Q_OBJECT
 public:
+    // 构造函数
     explicit AnalyticsPage(Database *db, QWidget *parent = nullptr);
 
 public slots:
+    // 刷新所有数据
     void refresh();
 
 private slots:
+    // 时间范围切换
     void onRangeChanged();
+    // 应用主题
     void applyTheme();
+    // 应用语言
     void applyLanguage();
 
 private:
+    // 构建界面
     void buildUI();
+    // 创建卡片容器框
     QFrame *makeCardFrame();
 
     Database *m_db;

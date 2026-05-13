@@ -8,16 +8,19 @@
 
 namespace timemaster {
 
+// 返回单例引用
 Theme &Theme::instance() {
     static Theme t;
     return t;
 }
 
+// 构造函数：从 QSettings 读取已保存的主题模式
 Theme::Theme(QObject *parent) : QObject(parent) {
     int saved = m_settings.value("theme_mode", int(Light)).toInt();
     m_mode = (saved == Dark) ? Dark : Light;
 }
 
+// 设置模式，持久化并发射 changed 信号
 void Theme::setMode(Mode m) {
     if (m == m_mode) return;
     m_mode = m;
@@ -25,6 +28,7 @@ void Theme::setMode(Mode m) {
     emit changed();
 }
 
+// 切换亮/暗模式
 void Theme::toggle() { setMode(m_mode == Light ? Dark : Light); }
 
 // ============== Opaque colors (V4.2) ==============
@@ -33,69 +37,85 @@ void Theme::toggle() { setMode(m_mode == Light ? Dark : Light); }
 // #1F1F1E for status bar feeling. Containers (cards) keep a clear hierarchy
 // step above the page.
 
+// 页面背景色
 QColor Theme::bgPage() const {
     return m_mode == Light ? QColor("#E8E1CF") : QColor("#1F1F1E");
 }
 
+// 容器/卡片背景色
 QColor Theme::bgContainer() const {
     // Cards: warm off-white in Light for clear hierarchy against deeper page.
     // Dark: container slightly lighter than the page so cards visibly lift.
     return m_mode == Light ? QColor("#FAF6EE") : QColor("#2A2826");
 }
 
+// 组件背景色
 QColor Theme::bgComponent() const {
     return m_mode == Light ? QColor("#DED7C5") : QColor("#363229");
 }
 
+// 悬停背景色
 QColor Theme::bgHover() const {
     return m_mode == Light ? QColor("#E0DACA") : QColor("#3A362E");
 }
 
+// 边框/分割线色
 QColor Theme::stroke() const {
     return m_mode == Light ? QColor(60, 50, 40, 22) : QColor(240, 230, 210, 18);
 }
 
+// 主文字色
 QColor Theme::textPrimary() const {
     // V4.2 #8: dark mode text bumped from F7F7F5 to fully checked against deeper bg
     return m_mode == Light ? QColor("#1D1C16") : QColor("#F7F7F5");
 }
 
+// 次要文字色
 QColor Theme::textSecondary() const {
     return m_mode == Light ? QColor("#6B645A") : QColor("#C2B6B6");
 }
 
+// 占位文字色
 QColor Theme::textPlaceholder() const {
     return m_mode == Light ? QColor("#A39B8E") : QColor("#92948A");
 }
 
+// 品牌色
 QColor Theme::brand() const {
     return m_mode == Light ? QColor("#C26646") : QColor("#E08A6E");
 }
 
+// 品牌色浅色
 QColor Theme::brandLight() const {
     return m_mode == Light ? QColor("#F4DDD0") : QColor("#4A3328");
 }
 
+// 强调色
 QColor Theme::accent() const {
     return m_mode == Light ? QColor("#6F8B7E") : QColor("#8FA59A");
 }
 
+// 今日高亮色
 QColor Theme::todayHighlight() const {
     return m_mode == Light ? QColor(194, 102, 70, 0) : QColor(224, 138, 110, 0);
 }
 
+// 当前时间线色
 QColor Theme::nowLine() const { return brand(); }
 
+// 成功色
 QColor Theme::success() const {
     return m_mode == Light ? QColor("#6B7F47") : QColor("#92A66B");
 }
 
+// 危险/错误色
 QColor Theme::danger() const {
     return m_mode == Light ? QColor("#B8453E") : QColor("#D26C66");
 }
 
 // ============== Semi-transparent rgba (QSS) ==============
 
+// 卡片背景半透明色（QSS 用）
 QString Theme::cardBgRgba() const {
     // V4.2: cards opaque, slightly off-white in Light to live on the deeper page
     return m_mode == Light
@@ -103,36 +123,42 @@ QString Theme::cardBgRgba() const {
         : QStringLiteral("rgba(42, 40, 38, 1.0)");
 }
 
+// 卡片悬停背景半透明色（QSS 用）
 QString Theme::cardBgHoverRgba() const {
     return m_mode == Light
         ? QStringLiteral("rgba(245, 240, 230, 1.0)")
         : QStringLiteral("rgba(52, 48, 44, 1.0)");
 }
 
+// 侧边栏背景半透明色（QSS 用）
 QString Theme::sidebarBgRgba() const {
     return m_mode == Light
         ? QStringLiteral("rgba(232, 225, 207, 1.0)")
         : QStringLiteral("rgba(28, 27, 25, 1.0)");
 }
 
+// 组件背景半透明色（QSS 用）
 QString Theme::componentBgRgba() const {
     return m_mode == Light
         ? QStringLiteral("rgba(222, 215, 197, 1.0)")
         : QStringLiteral("rgba(54, 50, 41, 1.0)");
 }
 
+// 边框半透明色（QSS 用）
 QString Theme::strokeRgba() const {
     return m_mode == Light
         ? QStringLiteral("rgba(60, 50, 40, 0.09)")
         : QStringLiteral("rgba(240, 230, 210, 0.07)");
 }
 
+// 阴影半透明色（QSS 用）
 QString Theme::shadowRgba() const {
     return m_mode == Light
         ? QStringLiteral("rgba(60, 45, 30, 0.06)")
         : QStringLiteral("rgba(0, 0, 0, 0.24)");
 }
 
+// 返回 12 色事件色板
 QHash<EventColor, ColorPalette> Theme::palette() const {
     QHash<EventColor, ColorPalette> p;
     if (m_mode == Light) {
@@ -171,6 +197,7 @@ QHash<EventColor, ColorPalette> Theme::palette() const {
 
 // ============== Global QSS (V4.2 typography) ==============
 
+// 生成完整 QSS 样式表
 QString Theme::globalStylesheet() const {
     QString brand = this->brand().name();
     QString brandHover = m_mode == Light ? "#A85638" : "#D97757";

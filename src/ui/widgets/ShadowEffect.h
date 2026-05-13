@@ -19,10 +19,13 @@ namespace timemaster {
  * Single helper so we don't end up with 11 slightly different shadow
  * configurations scattered through the codebase.
  */
+// 阴影效果工具：为 Widget 添加 QGraphicsDropShadowEffect，支持 Subtle/Card/Floating 三级深度
 class ShadowEffect {
 public:
+    // 阴影强度枚举：Subtle（轻微）/ Card（卡片）/ Floating（浮动）
     enum Strength { Subtle, Card, Floating };
 
+    // 为指定控件应用阴影效果（避免重复堆叠）
     static void apply(QWidget *w, Strength s = Card, bool darkMode = false) {
         if (!w) return;
 
@@ -47,6 +50,7 @@ public:
         w->setGraphicsEffect(eff);
     }
 
+    // 移除控件的阴影效果
     static void remove(QWidget *w) {
         if (w && w->graphicsEffect()) {
             w->setGraphicsEffect(nullptr);

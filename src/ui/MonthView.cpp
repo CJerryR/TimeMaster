@@ -24,6 +24,7 @@ constexpr int EVENT_BAR_GAP = 3;
 constexpr int DATE_TEXT_HEIGHT = 32;
 }
 
+// 构造函数：启用鼠标追踪，监听语言和周起始日变化信号
 MonthView::MonthView(QWidget *parent) : QWidget(parent) {
     setMouseTracking(true);
     setAttribute(Qt::WA_StyledBackground, false);
@@ -37,18 +38,21 @@ MonthView::MonthView(QWidget *parent) : QWidget(parent) {
     });
 }
 
+// 设置当前显示月份并触发重建和重绘
 void MonthView::setCurrentDate(const QDate &date) {
     m_currentDate = date;
     rebuildLayout();
     update();
 }
 
+// 设置事件列表并触发重建和重绘
 void MonthView::setEvents(const QList<CalendarEvent> &events) {
     m_events = events;
     rebuildLayout();
     update();
 }
 
+// 构建月视图42天日期序列（含前后月填充），根据Preferences决定周起始日
 QList<QDate> MonthView::buildDays() const {
     QList<QDate> days;
     QDate firstOfMonth(m_currentDate.year(), m_currentDate.month(), 1);
@@ -58,6 +62,7 @@ QList<QDate> MonthView::buildDays() const {
     return days;
 }
 
+// 查询指定日期所有跨天事件，按全天优先+时间排序
 QList<CalendarEvent> MonthView::eventsForDay(const QDate &d) const {
     QList<CalendarEvent> list;
     for (const auto &e : m_events) {
@@ -72,6 +77,7 @@ QList<CalendarEvent> MonthView::eventsForDay(const QDate &d) const {
     return list;
 }
 
+// 计算所有单元格、事件条和+N溢出区域的矩形位置
 void MonthView::rebuildLayout() {
     m_cells.clear();
     m_eventRects.clear();
@@ -133,6 +139,7 @@ void MonthView::rebuildLayout() {
     }
 }
 
+// 绘制月视图：周表头、日期格、今日高亮圆、事件色条、+N溢出文本、悬停效果
 void MonthView::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
@@ -290,6 +297,7 @@ void MonthView::paintEvent(QPaintEvent *) {
     }
 }
 
+// 鼠标按下：检测事件点击、+N溢出点击、日期点击（单击直接切日视图）
 void MonthView::mousePressEvent(QMouseEvent *e) {
     if (e->button() != Qt::LeftButton) return;
     for (const auto &er : m_eventRects) {
@@ -315,6 +323,7 @@ void MonthView::mousePressEvent(QMouseEvent *e) {
     }
 }
 
+// 鼠标双击：触发日期点击信号（兼容老用户双击习惯）
 void MonthView::mouseDoubleClickEvent(QMouseEvent *e) {
     // V4.4 #2 — 双击空白格依旧 emit dateClicked，但 CalendarPage 端会判同
     // 当前 view（已经在 Day mode 则不重复切，可以接着触发新建事件）。这样
@@ -328,6 +337,7 @@ void MonthView::mouseDoubleClickEvent(QMouseEvent *e) {
     }
 }
 
+// 鼠标移动：更新悬停高亮并显示事件ToolTip
 void MonthView::mouseMoveEvent(QMouseEvent *e) {
     int newHover = -1;
     for (int i = 0; i < m_cells.size(); ++i) {
@@ -352,11 +362,13 @@ void MonthView::mouseMoveEvent(QMouseEvent *e) {
     QToolTip::hideText();
 }
 
+// 鼠标离开：清除悬停索引并重绘
 void MonthView::leaveEvent(QEvent *) {
     m_hoverIndex = -1;
     update();
 }
 
+// 尺寸变化时重建布局
 void MonthView::resizeEvent(QResizeEvent *) {
     rebuildLayout();
 }

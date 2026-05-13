@@ -9,17 +9,20 @@
 
 namespace timemaster {
 
+// 获取全局单例实例
 I18n &I18n::instance() {
     static I18n inst;
     return inst;
 }
 
+// 构造函数：从 QSettings 读取上次保存的语言
 I18n::I18n(QObject *parent) : QObject(parent) {
     // 默认英文；用户切换后会持久化
     int saved = m_settings.value("language_mode", int(English)).toInt();
     m_lang = (saved == Chinese) ? Chinese : English;
 }
 
+// 切换语言并持久化
 void I18n::setLanguage(Language l) {
     if (l == m_lang) return;
     m_lang = l;
@@ -27,17 +30,19 @@ void I18n::setLanguage(Language l) {
     emit languageChanged();
 }
 
+// 中英文来回切换
 void I18n::toggle() {
     setLanguage(m_lang == English ? Chinese : English);
 }
 
 namespace {
 
+// 英文翻译表
 const QHash<QString, QString> &enTable() {
     static const QHash<QString, QString> t = {
         // App
         {"app.title",           "Time Master"},
-        {"app.window_title",    "Time Master  ·  V4.3.2  ·  Prod by CJerryR"},
+        {"app.window_title",    "Time Master  ·  V4.3.3  ·  Prod by CJerryR"},
 
         // Sidebar nav
         {"nav.calendar",        "Calendar"},
@@ -198,7 +203,7 @@ const QHash<QString, QString> &enTable() {
         {"settings.ai_context.future", "Future"},
         {"settings.ai_context.days_suffix", " days"},
 
-        // V4.3 #7: AI permissions (approval gate)
+        // V4.3 #7: AI permissions (Claude-Code-style approval gate)
         {"settings.ai_perm.group", "AI calendar permissions"},
         {"settings.ai_perm.hint",
             "By default, every action AI requests on your calendar shows an "
@@ -221,7 +226,7 @@ const QHash<QString, QString> &enTable() {
         {"settings.week_start.sunday",  "Sunday"},
         {"settings.storage",        "Data storage"},
         {"settings.db_file_fmt",    "Database file:\n%1"},
-        {"settings.version_footer", "TimeMaster  ·  V4.3.2  ·  Prod by CJerryR  ·  github.com/CJerryR"},
+        {"settings.version_footer", "TimeMaster  ·  V4.3.3  ·  Prod by CJerryR  ·  github.com/CJerryR"},
         {"settings.save",           "Save"},
         {"settings.cancel",         "Cancel"},
 
@@ -345,7 +350,7 @@ const QHash<QString, QString> &enTable() {
         {"onboarding.step1.body",
             "Time Master is a calm, local-first calendar with two superpowers:\n\n"
             "  · Press Ctrl+K and paste any plan in natural language — AI turns it into events.\n"
-            "  · Chat with AI-powered reasoning over your own calendar.\n\n"
+            "  · Chat with Claude-style reasoning over your own calendar.\n\n"
             "All your data stays on this device."},
         {"onboarding.step2.title",      "Pick a language"},
         {"onboarding.step2.body",       "You can switch any time from the sidebar."},
@@ -358,7 +363,8 @@ const QHash<QString, QString> &enTable() {
         {"onboarding.back",             "Back"},
         {"onboarding.done",             "Get started"},
 
-        // AI persona — V4.3.2 「小师」+ 颜文字风
+        // ==================== AI 人设提示词 ====================
+        // AI persona — V4.3.3 「小师」+ 颜文字风
         {"chat.prompt.persona_en",
             "Your name is Xiaoshi (小师), the user's dedicated little time-secretary "
             "(and also a bit of a sweet airhead (｡>﹏<｡)).\n"
@@ -381,11 +387,12 @@ const QHash<QString, QString> &enTable() {
     return t;
 }
 
+// 中文翻译表
 const QHash<QString, QString> &zhTable() {
     static const QHash<QString, QString> t = {
         // App
         {"app.title",           "时间管理大师"},
-        {"app.window_title",    "时间管理大师  ·  V4.3.2  ·  Prod by CJerryR"},
+        {"app.window_title",    "时间管理大师  ·  V4.3.3  ·  Prod by CJerryR"},
 
         // Sidebar nav
         {"nav.calendar",        "日历"},
@@ -568,7 +575,7 @@ const QHash<QString, QString> &zhTable() {
         {"settings.week_start.sunday",  "周日"},
         {"settings.storage",        "数据存储"},
         {"settings.db_file_fmt",    "数据库文件：\n%1"},
-        {"settings.version_footer", "时间管理大师  ·  V4.3.2  ·  Prod by CJerryR  ·  github.com/CJerryR"},
+        {"settings.version_footer", "时间管理大师  ·  V4.3.3  ·  Prod by CJerryR  ·  github.com/CJerryR"},
         {"settings.save",           "保存"},
         {"settings.cancel",         "取消"},
 
@@ -639,7 +646,7 @@ const QHash<QString, QString> &zhTable() {
         {"insight.today_busy_fmt",  "✦  今天 %1 件事在排队，按优先级开始就好。"},
         {"insight.default",         "✦  保持当前节奏，下一周也会很稳。"},
 
-        // AI persona — V4.3.2 「小师」温柔可爱时间小秘书 + 颜文字
+        // AI persona — V4.3.3 「小师」温柔可爱时间小秘书 + 颜文字
         {"chat.prompt.persona_en",
             "你叫「小师」，是用户专属的时间小秘书（也是个温柔的小笨蛋哦 (｡>﹏<｡)）。\n"
             "性格设定：温柔体贴 / 努力可爱 / 偶尔害羞 / 但工作一丝不苟。"
@@ -726,6 +733,7 @@ const QHash<QString, QString> &zhTable() {
 
 } // namespace
 
+// 核心翻译函数：按 key 查找当前语言的对应文本
 QString I18n::t(const QString &key) {
     const auto &tbl = instance().m_lang == English ? enTable() : zhTable();
     auto it = tbl.constFind(key);

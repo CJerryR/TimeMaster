@@ -33,6 +33,7 @@
 namespace timemaster {
 
 namespace {
+// 绑定消息文本到气泡（用户纯文本 / AI 富文本并过滤 action 块）
 void bindMessageText(QLabel *bubble, const QString &text, bool isUser) {
     if (isUser) {
         bubble->setTextFormat(Qt::PlainText);
@@ -53,6 +54,7 @@ void bindMessageText(QLabel *bubble, const QString &text, bool isUser) {
     }
 }
 
+// 操作类型对应的国际化键名
 QString opLabelI18nKey(const QString &op) {
     if (op == "add")    return QStringLiteral("chat.action.op_add");
     if (op == "delete") return QStringLiteral("chat.action.op_delete");
@@ -60,6 +62,7 @@ QString opLabelI18nKey(const QString &op) {
     return QStringLiteral("chat.action.op_unknown");
 }
 
+// JSON 颜色名字符串转 EventColor 枚举
 EventColor colorFromString(const QString &s) {
     QString k = s.trimmed().toLower();
     if (k == "red")      return EventColor::Red;
@@ -77,6 +80,7 @@ EventColor colorFromString(const QString &s) {
     return EventColor::Blue;
 }
 
+// JSON 类别名字符串转 EventCategory 枚举
 EventCategory categoryFromString(const QString &s) {
     QString k = s.trimmed().toLower();
     if (k == "work")          return EventCategory::Work;
@@ -90,6 +94,7 @@ EventCategory categoryFromString(const QString &s) {
 }
 
 // 把一个 CalendarEvent 序列化为 JSON 字符串，供 ChatActions.snapshot_json 持久化用。
+// CalendarEvent 序列化为 JSON 字符串
 QString eventToJson(const CalendarEvent &e) {
     QJsonObject o;
     o["id"]          = e.id;
@@ -110,6 +115,7 @@ QString eventToJson(const CalendarEvent &e) {
     return QString::fromUtf8(QJsonDocument(o).toJson(QJsonDocument::Compact));
 }
 
+// JSON 字符串反序列化为 CalendarEvent
 CalendarEvent eventFromJson(const QString &json) {
     CalendarEvent e;
     auto doc = QJsonDocument::fromJson(json.toUtf8());
@@ -140,6 +146,7 @@ CalendarEvent eventFromJson(const QString &json) {
 
 } // namespace
 
+// 构造函数：初始化界面、信号连接、读取隐私设置
 ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     : QWidget(parent), m_db(db), m_ai(ai)
 {
@@ -183,7 +190,8 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     connect(m_clearBtn, &QPushButton::clicked, this, &ChatPage::onClear);
 
     // V4.3 #7 — 操作历史按钮。点开切换抽屉显示，抽屉里两列展示最近被允许的
-    // add / delete 操作，每行有一个撤销按钮。
+    // add / delete 操作，每行有一个撤销按钮。设计上模仿 Claude Code 的左侧
+    // 抽屉，但更紧凑。
     m_historyBtn = new QPushButton;
     m_historyBtn->setObjectName("ChatGhostBtn");
     m_historyBtn->setCursor(Qt::PointingHandCursor);
@@ -336,23 +344,27 @@ ChatPage::ChatPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     applyTheme();
 }
 
+// 从设置刷新隐私芯片
 void ChatPage::refreshFromSettings() {
     // V4.2 #10 — refresh the chip text/enabled state from QSettings.
     updatePrivacyChip();
 }
 
+// 隐私芯片点击 → 打开设置页
 void ChatPage::onPrivacyChipClicked() {
     // V4.2 #10: chip is now a settings shortcut, not a toggle. Past/future
     // days and the enable flag all live in SettingsDialog.
     emit openSettingsRequested();
 }
 
+// 设置 AI 日历可见性并持久化
 void ChatPage::setAiSeesCalendar(bool v) {
     m_aiSeesCalendar = v;
     QSettings().setValue("ai_sees_calendar", v);
     updatePrivacyChip();
 }
 
+// 更新隐私芯片文本和样式
 void ChatPage::updatePrivacyChip() {
     if (!m_privacyChip) return;
     auto &t = Theme::instance();
@@ -390,6 +402,7 @@ void ChatPage::updatePrivacyChip() {
     m_privacyChip->setToolTip(I18n::t("chat.ctx.tip_v2"));
 }
 
+// 刷新界面文本
 void ChatPage::applyLanguage() {
     if (m_titleLabel)    m_titleLabel->setText(I18n::t("chat.title"));
     if (m_input)         m_input->setPlaceholderText(I18n::t("chat.placeholder"));
@@ -406,6 +419,7 @@ void ChatPage::applyLanguage() {
     updatePrivacyChip();
 }
 
+// 构造 AI 系统提示词（含日历操作协议）
 QString ChatPage::basePrompt() const {
     QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd dddd");
     QString persona = I18n::t("chat.prompt.persona_en").arg(today);
@@ -457,6 +471,7 @@ QString ChatPage::basePrompt() const {
     return persona + (en ? protocolEn : protocolZh);
 }
 
+// 构造日历上下文文本（含事件列表）
 QString ChatPage::buildCalendarContext() const {
     if (!m_db) return QString();
 
@@ -532,12 +547,14 @@ QString ChatPage::buildCalendarContext() const {
     return lines;
 }
 
+// 发送预制快捷查询
 void ChatPage::sendCannedQuery(const QString &q) {
     if (m_isResponding) return;
     m_input->setText(q);
     onSend();
 }
 
+// 发送用户输入到 AI
 void ChatPage::onSend() {
     QString text = m_input->text().trimmed();
     if (text.isEmpty() || m_isResponding) return;
@@ -555,6 +572,9 @@ void ChatPage::onSend() {
     m_isResponding = true;
     m_sendBtn->setEnabled(false);
     m_streamingText.clear();
+    // V4.3.3 #1 — 记住这一轮的 user 消息，等 chatFinished 时连同回复一起
+    // 追加到 m_chatHistory；出错则丢弃，避免半截消息污染历史。
+    m_pendingUserMessage = text;
     m_currentStreamingBubble = appendBubble("…", false, true);
 
     QString ctx;
@@ -579,9 +599,10 @@ void ChatPage::onSend() {
                              "禁止编造任何具体日程、时间或事件。）");
     }
 
-    m_ai->sendChat(text, basePrompt(), ctx);
+    m_ai->sendChat(text, basePrompt(), ctx, m_chatHistory);
 }
 
+// 流式接收 AI 回复片段并更新气泡
 void ChatPage::onChatChunk(const QString &delta) {
     if (!m_currentStreamingBubble) return;
     m_streamingText += delta;
@@ -589,6 +610,7 @@ void ChatPage::onChatChunk(const QString &delta) {
     scrollToBottom();
 }
 
+// AI 回复完成：记录多轮历史、解析 action 操作
 void ChatPage::onChatFinished(const QString &full) {
     QString text = full.isEmpty() ? m_streamingText : full;
     if (m_currentStreamingBubble) {
@@ -597,12 +619,38 @@ void ChatPage::onChatFinished(const QString &full) {
     }
     m_isResponding = false;
     m_sendBtn->setEnabled(true);
+
+    // V4.3.3 #1 — 把当前轮 user + assistant 提交到历史。注意 assistant 的
+    // content 用原始 text（含 ```action``` 块），这样 AI 才知道上一轮自己
+    // 提议过什么操作。
+    if (!m_pendingUserMessage.isEmpty()) {
+        QJsonObject u;
+        u["role"] = "user";
+        u["content"] = m_pendingUserMessage;
+        m_chatHistory.append(u);
+
+        QJsonObject a;
+        a["role"] = "assistant";
+        a["content"] = text;
+        m_chatHistory.append(a);
+
+        m_pendingUserMessage.clear();
+
+        // 历史封顶：留近 N 轮（N*2 条消息）。太老的对话再带上去既费 token
+        // 又容易把模型带跑题；近期对话最有用。
+        constexpr int kMaxTurns = 20;
+        while (m_chatHistory.size() > kMaxTurns * 2) {
+            m_chatHistory.removeFirst();
+        }
+    }
+
     // V4.3 #7 — 流式结束后解析 action 块，渲染审批卡。注意只在 finished 时解析，
     // 不在 chunk 里做，避免半截 JSON 导致漏卡或重复卡。
     parseAndRenderActions(text);
     scrollToBottom();
 }
 
+// AI 回复出错处理
 void ChatPage::onChatError(const QString &msg) {
     QString prefix = I18n::t("chat.error.prefix");
     if (m_currentStreamingBubble) {
@@ -613,8 +661,12 @@ void ChatPage::onChatError(const QString &msg) {
     }
     m_isResponding = false;
     m_sendBtn->setEnabled(true);
+    // V4.3.3 #1 — 出错的这一轮不进历史，避免下一轮带着一条没回好的 user
+    // 消息让模型困惑。
+    m_pendingUserMessage.clear();
 }
 
+// 重建空状态提示
 void ChatPage::rebuildEmptyState() {
     if (!m_emptyState) return;
     m_emptyTitle->setText(I18n::t("chat.empty.title"));
@@ -625,8 +677,12 @@ void ChatPage::rebuildEmptyState() {
     m_emptyState->show();
 }
 
+// 清空对话消息和历史
 void ChatPage::onClear() {
     m_bubbles.clear();
+    // V4.3.3 #1 — Clear 按钮同步清空多轮对话记忆，让下一句重新开始。
+    m_chatHistory = QJsonArray();
+    m_pendingUserMessage.clear();
     // Take everything off the layout except the empty state widget (re-added below)
     while (m_msgLayout->count() > 0) {
         auto *item = m_msgLayout->takeAt(0);
@@ -651,6 +707,7 @@ void ChatPage::onClear() {
     applyTheme();
 }
 
+// 添加聊天气泡到布局
 QLabel *ChatPage::appendBubble(const QString &text, bool isUser, bool isStreaming) {
     Q_UNUSED(isStreaming);
 
@@ -695,16 +752,19 @@ QLabel *ChatPage::appendBubble(const QString &text, bool isUser, bool isStreamin
     return bubble;
 }
 
+// 滚动到消息区域底部
 void ChatPage::scrollToBottom() {
     auto *bar = m_scroll->verticalScrollBar();
     bar->setValue(bar->maximum());
 }
 
+// 窗口大小变化时更新气泡宽度
 void ChatPage::resizeEvent(QResizeEvent *e) {
     QWidget::resizeEvent(e);
     updateBubblesMaxWidth();
 }
 
+// 根据视口宽度更新气泡最大宽度
 void ChatPage::updateBubblesMaxWidth() {
     if (!m_scroll) return;
     int vw = m_scroll->viewport()->width();
@@ -716,12 +776,14 @@ void ChatPage::updateBubblesMaxWidth() {
     }
 }
 
+// 切换操作历史抽屉
 void ChatPage::onHistoryDrawerToggled() {
     m_drawerOpen = !m_drawerOpen;
     m_historyDrawer->setVisible(m_drawerOpen);
     if (m_drawerOpen) reloadActionDrawer();
 }
 
+// 重新加载操作历史抽屉内容
 void ChatPage::reloadActionDrawer() {
     if (!m_drawerAddedColumn || !m_drawerDeletedColumn) return;
 
@@ -809,6 +871,7 @@ void ChatPage::reloadActionDrawer() {
     }
 }
 
+// 解析 AI 回复中的 action 块并渲染审批卡
 void ChatPage::parseAndRenderActions(const QString &fullAiText) {
     // V4.3 #7 — 提取所有 ```action ... ``` 块。每块一个 JSON 对象，
     // 描述一次日历操作。每个被成功解析的块都会渲染一张审批卡。
@@ -921,6 +984,7 @@ void ChatPage::parseAndRenderActions(const QString &fullAiText) {
     }
 }
 
+// 追加操作审批卡到对话
 void ChatPage::appendActionCard(const QString &op, const QString &humanSummary,
                                 const QString &snapshotJson, const QString &eventId) {
     auto &t = Theme::instance();
@@ -1089,6 +1153,7 @@ void ChatPage::appendActionCard(const QString &op, const QString &humanSummary,
     QTimer::singleShot(0, this, &ChatPage::scrollToBottom);
 }
 
+// 执行日历操作并记录
 void ChatPage::executeAction(const QString &op, const QString &snapshotJson,
                              const QString &humanSummary, const QString &eventId) {
     CalendarEvent ev = eventFromJson(snapshotJson);
@@ -1103,6 +1168,7 @@ void ChatPage::executeAction(const QString &op, const QString &snapshotJson,
     if (m_drawerOpen) reloadActionDrawer();
 }
 
+// 撤销已执行的操作
 void ChatPage::undoAction(const ChatAction &a) {
     // 撤销逻辑：add → delete；delete → re-insert snapshot；update → restore snapshot
     if (a.op == "add") {
@@ -1118,6 +1184,7 @@ void ChatPage::undoAction(const ChatAction &a) {
     if (m_drawerOpen) reloadActionDrawer();
 }
 
+// 应用主题样式
 void ChatPage::applyTheme() {
     auto &t = Theme::instance();
     QString brand = t.brand().name();

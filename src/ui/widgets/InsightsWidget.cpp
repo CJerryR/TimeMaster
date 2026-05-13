@@ -13,6 +13,7 @@
 
 namespace timemaster {
 
+// 构造函数：创建标题和文案标签并连接语言切换信号
 InsightsWidget::InsightsWidget(Database *db, QWidget *parent)
     : QWidget(parent), m_db(db)
 {
@@ -38,6 +39,7 @@ InsightsWidget::InsightsWidget(Database *db, QWidget *parent)
     });
 }
 
+// 根据时间范围查询统计并生成日均/工作占比/连续天数等洞察文案
 void InsightsWidget::refresh(const QDateTime &start, const QDateTime &end) {
     m_lastStart = start;
     m_lastEnd = end;

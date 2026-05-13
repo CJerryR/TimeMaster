@@ -14,6 +14,7 @@
 
 namespace timemaster {
 
+// 构造函数：创建居中空状态卡片（标题+副标题+进度+操作按钮）并连接主题信号
 EmptyState::EmptyState(QWidget *parent) : QWidget(parent) {
     setObjectName("EmptyState");
     setAttribute(Qt::WA_StyledBackground, false);
@@ -72,9 +73,12 @@ EmptyState::EmptyState(QWidget *parent) : QWidget(parent) {
     applyTheme();
 }
 
+// 设置标题文本
 void EmptyState::setTitle(const QString &t)    { m_title->setText(t); }
+// 设置副标题文本
 void EmptyState::setSubtitle(const QString &t) { m_subtitle->setText(t); }
 
+// 设置进度提示（非空显示，空则隐藏）
 void EmptyState::setProgress(const QString &t) {
     if (t.isEmpty()) {
         m_progress->hide();
@@ -84,11 +88,13 @@ void EmptyState::setProgress(const QString &t) {
     }
 }
 
+// 删除所有操作按钮
 void EmptyState::clearActions() {
     for (auto *b : m_actionButtons) b->deleteLater();
     m_actionButtons.clear();
 }
 
+// 添加操作按钮并连接点击回调
 void EmptyState::addAction(const QString &label, const std::function<void()> &cb) {
     auto *btn = new QPushButton(label);
     btn->setObjectName("EmptyActionBtn");
@@ -100,6 +106,7 @@ void EmptyState::addAction(const QString &label, const std::function<void()> &cb
     applyTheme();
 }
 
+// 应用 QSS：卡片背景/边框/圆角 + 按钮悬停效果
 void EmptyState::applyTheme() {
     auto &t = Theme::instance();
     setStyleSheet(QString(R"(

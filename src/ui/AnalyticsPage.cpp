@@ -34,6 +34,7 @@ namespace timemaster {
 // V3.3 had 14, V4 spec says 12; keep V3.3
 static constexpr int CARD_RADIUS = 14;
 
+// 构造函数：构建界面、连接信号
 AnalyticsPage::AnalyticsPage(Database *db, QWidget *parent)
     : QWidget(parent), m_db(db)
 {
@@ -45,6 +46,7 @@ AnalyticsPage::AnalyticsPage(Database *db, QWidget *parent)
     connect(m_db, &Database::eventsChanged, this, &AnalyticsPage::refresh);
 }
 
+// 构建界面：标题栏、KPI 卡片、图表、洞察等布局
 void AnalyticsPage::buildUI() {
     auto *outerLayout = new QVBoxLayout(this);
     outerLayout->setContentsMargins(20, 18, 20, 18);
@@ -201,6 +203,7 @@ void AnalyticsPage::buildUI() {
             this, &AnalyticsPage::onRangeChanged);
 }
 
+// 创建统一样式的卡片容器框
 QFrame *AnalyticsPage::makeCardFrame() {
     auto *f = new QFrame();
     f->setObjectName("cardFrame");
@@ -208,6 +211,7 @@ QFrame *AnalyticsPage::makeCardFrame() {
     return f;
 }
 
+// 刷新界面文本（中/英切换）
 void AnalyticsPage::applyLanguage() {
     if (m_title)       m_title->setText(I18n::t("analytics.title"));
     if (m_refreshBtn) {
@@ -235,6 +239,7 @@ void AnalyticsPage::applyLanguage() {
     }
 }
 
+// 根据时间范围查询数据库并更新所有图表组件
 void AnalyticsPage::refresh() {
     QDateTime start, end;
     int idx = m_rangeCombo->currentIndex();
@@ -319,8 +324,10 @@ void AnalyticsPage::refresh() {
     applyTheme();
 }
 
+// 时间范围切换时刷新
 void AnalyticsPage::onRangeChanged() { refresh(); }
 
+// 刷新界面样式
 void AnalyticsPage::applyTheme() {
     auto &t = Theme::instance();
     QString brandHover = t.mode() == Theme::Light ? "#A85638" : "#D97757";

@@ -21,10 +21,12 @@ namespace timemaster {
 // Logo 方块 32x32 (was 40x40)
 class SidebarLogo : public QWidget {
 public:
+    // 构造函数：设置固定尺寸
     explicit SidebarLogo(QWidget *parent = nullptr) : QWidget(parent) {
         setFixedSize(32, 32);
     }
 protected:
+    // 绘制应用图标
     void paintEvent(QPaintEvent *) override {
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing);
@@ -33,6 +35,7 @@ protected:
     }
 };
 
+// 构造函数：布局 Logo、导航按钮、底部工具栏
 Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
     setObjectName("Sidebar");
     setFixedWidth(180);   // V4 § 6.1: 232 -> 180
@@ -122,6 +125,7 @@ Sidebar::Sidebar(QWidget *parent) : QWidget(parent) {
     applyTheme();
 }
 
+// 创建导航按钮
 QPushButton *Sidebar::makeNavButton(int iconId, const QString &i18nKey) {
     auto *btn = new QPushButton(I18n::t(i18nKey));
     btn->setObjectName("SidebarNavBtn");
@@ -137,6 +141,7 @@ QPushButton *Sidebar::makeNavButton(int iconId, const QString &i18nKey) {
     return btn;
 }
 
+// 设置当前选中项，更新选中状态和图标
 void Sidebar::setCurrentItem(NavItem item) {
     m_current = item;
     for (int i = 0; i < m_navButtons.size(); ++i) {
@@ -145,11 +150,13 @@ void Sidebar::setCurrentItem(NavItem item) {
     refreshNavIcons();
 }
 
+// 处理导航按钮点击，发射 navigated 信号
 void Sidebar::onNavClicked(int idx) {
     setCurrentItem(static_cast<NavItem>(idx));
     emit navigated(idx);
 }
 
+// 刷新所有导航图标颜色
 void Sidebar::refreshNavIcons() {
     Theme &t = Theme::instance();
     for (int i = 0; i < m_navButtons.size(); ++i) {
@@ -161,6 +168,7 @@ void Sidebar::refreshNavIcons() {
     }
 }
 
+// 应用语言：更新品牌文字、导航文字、工具提示
 void Sidebar::applyLanguage() {
     if (m_brandText) m_brandText->setText(I18n::t("sidebar.brand"));
     for (int i = 0; i < m_navButtons.size(); ++i) {
@@ -168,9 +176,17 @@ void Sidebar::applyLanguage() {
     }
     if (m_themeBtn)    m_themeBtn->setToolTip(I18n::t("sidebar.theme_tip"));
     if (m_settingsBtn) m_settingsBtn->setToolTip(I18n::t("sidebar.settings_tip"));
-    if (m_langBtn)     m_langBtn->setToolTip(I18n::t("sidebar.lang_tip"));
+    if (m_langBtn) {
+        m_langBtn->setToolTip(I18n::t("sidebar.lang_tip"));
+        // V4.3.3 #2 — 语言切换按钮上的「A」/「中」字形必须随语言切换。
+        // 原本只在 applyTheme() 里更新，这导致用户点按钮后只看到导航栏文字
+        // 切了，按钮自己的字形要等下一次切主题才会更新。改成 applyLanguage()
+        // 里同步刷新，applyTheme() 里也保留（兜底首次进入）。
+        m_langBtn->setText(I18n::instance().isEnglish() ? "中" : "A");
+    }
 }
 
+// 应用主题：更新侧边栏样式、图标颜色
 void Sidebar::applyTheme() {
     Theme &t = Theme::instance();
     QString brand = t.brand().name();

@@ -14,15 +14,18 @@
 
 namespace timemaster {
 
+// 构造函数：设置最小高度 180px
 HorizontalBarChart::HorizontalBarChart(QWidget *parent) : QWidget(parent) {
     setMinimumHeight(180);
 }
 
+// 设置类别统计数据并触发重绘
 void HorizontalBarChart::setData(const QList<CategoryStat> &stats) {
     m_stats = stats;
     update();
 }
 
+// 自绘：按各类别时长占比绘制彩色横向圆角条形图，右侧显示时长
 void HorizontalBarChart::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);

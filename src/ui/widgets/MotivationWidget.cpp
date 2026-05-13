@@ -18,12 +18,14 @@
 namespace timemaster {
 
 namespace {
+// 名言结构体：正文 + 出处
 struct Quote {
     QString text;
     QString attribute;
 };
 
 // V4 § 4.1：删除所有 "—— 时间管理大师" 自署名引言，只保留真实人物的名言。
+// 15 条中英双语名言池（真实人物名言），按 day-of-year 稳定选取
 const QList<Quote> &quotePool() {
     static const QList<Quote> q = {
         {"You don't find time. You make it.",                                  "— Charles Buxton"},
@@ -48,6 +50,7 @@ const QList<Quote> &quotePool() {
 }
 } // namespace
 
+// 构造函数：创建三层标签（名言/出处/洞察）并连接信号
 MotivationWidget::MotivationWidget(Database *db, QWidget *parent)
     : QWidget(parent), m_db(db)
 {
@@ -93,6 +96,7 @@ MotivationWidget::MotivationWidget(Database *db, QWidget *parent)
     applyTheme();
 }
 
+// 按 day-of-year 索引从名言池中每日选取同一条名言
 QString MotivationWidget::pickDailyQuote() const {
     // 按 day-of-year 稳定选取，同一天看到同一句
     int dy = QDate::currentDate().dayOfYear();
@@ -101,6 +105,7 @@ QString MotivationWidget::pickDailyQuote() const {
     return QString("\u201C%1\u201D|%2").arg(pool[idx].text, pool[idx].attribute);
 }
 
+// 根据统计数据生成数据洞察：连续天数/主要类别/日均/今天安排
 QString MotivationWidget::buildInsight(const QDateTime &start, const QDateTime &end) const {
     if (!m_db) return {};
 
@@ -175,6 +180,7 @@ QString MotivationWidget::buildInsight(const QDateTime &start, const QDateTime &
     return candidates[idx];
 }
 
+// 刷新名言 + 出处 + 洞察文案，根据内容自动选择字体（中文 Smiley Sans / 英文 IBM Plex Serif）
 void MotivationWidget::refresh(const QDateTime &start, const QDateTime &end) {
     auto &t = Theme::instance();
     QString q = pickDailyQuote();
@@ -226,6 +232,7 @@ void MotivationWidget::refresh(const QDateTime &start, const QDateTime &end) {
                                      .arg(brand));
 }
 
+// 主题变更回调：刷新背景透明
 void MotivationWidget::applyTheme() {
     // 实际颜色在 refresh 时刷新，这里仅保留背景
     setStyleSheet("background:transparent;");

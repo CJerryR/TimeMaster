@@ -32,16 +32,19 @@ namespace timemaster {
 class PageBackground : public QWidget {
     Q_OBJECT
 public:
+    // 构造函数：设置透明背景
     explicit PageBackground(QWidget *parent = nullptr) : QWidget(parent) {
         setAutoFillBackground(false);
     }
 protected:
+    // 绘制页面纯色背景
     void paintEvent(QPaintEvent *) override {
         QPainter p(this);
         p.fillRect(rect(), Theme::instance().bgPage());
     }
 };
 
+// 构造函数：创建三页面、Sidebar、导航控制、引导页延迟弹出
 MainWindow::MainWindow(Database *db, DeepSeekClient *ai, QWidget *parent)
     : QMainWindow(parent), m_db(db), m_ai(ai)
 {
@@ -92,6 +95,7 @@ MainWindow::MainWindow(Database *db, DeepSeekClient *ai, QWidget *parent)
     QTimer::singleShot(120, this, &MainWindow::showOnboardingIfFirstRun);
 }
 
+// 首次启动时弹出引导页
 void MainWindow::showOnboardingIfFirstRun() {
     QSettings s;
     if (s.value("onboarded", false).toBool()) return;
@@ -102,8 +106,10 @@ void MainWindow::showOnboardingIfFirstRun() {
     setWindowTitle(I18n::t("app.window_title"));
 }
 
+// 切换亮/暗主题
 void MainWindow::onThemeToggle() { Theme::instance().toggle(); }
 
+// 打开设置对话框
 void MainWindow::onSettings() {
     SettingsDialog dlg(m_ai, m_db->filePath(), this);
     dlg.exec();
@@ -111,6 +117,7 @@ void MainWindow::onSettings() {
     if (m_chatPage) m_chatPage->refreshFromSettings();
 }
 
+// 应用全局主题样式表并重绘背景
 void MainWindow::applyTheme() {
     setStyleSheet(Theme::instance().globalStylesheet());
     if (m_bg) m_bg->update();

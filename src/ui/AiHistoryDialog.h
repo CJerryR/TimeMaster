@@ -27,23 +27,35 @@ class Database;
  *    · 单条删除 → 仅删除该事件（批次会更新存活计数）
  *    · 仅清理历史 → 保留事件，仅清除批次记录（适合"确认无误后归档"）
  */
+// AI 导入历史弹窗：左栏批次列表（倒序），右栏批次详情 + 事件列表，支持整批撤销/归档/单条删除
 class AiHistoryDialog : public QDialog {
     Q_OBJECT
 public:
+    // 构造函数
     explicit AiHistoryDialog(Database *db, QWidget *parent = nullptr);
 
 private slots:
+    // 应用主题样式：刷新 QSS
     void applyTheme();
+    // 更新界面文字到当前语言
     void applyLanguage();
+    // 从数据库重新加载批次列表
     void reloadBatches();
+    // 左栏选中批次：加载并展示该批详情和事件列表
     void onBatchSelected();
+    // 撤销整批：确认后删除该批次所有事件和批次记录
     void onUndoBatch();
+    // 归档批次：清除批次记录但保留事件
     void onArchiveBatch();
+    // 删除单条事件：右栏选中事件后删除
     void onDeleteEvent();
 
 private:
+    // 构建 UI：左右分栏布局 + 按钮行
     void buildUi();
+    // 渲染右栏详情
     void renderRightPane();
+    // 获取当前选中批次的 ID
     QString currentBatchId() const;
 
     Database *m_db;

@@ -18,6 +18,7 @@ namespace timemaster {
 namespace {
 
 // 在像素 px 大小的画布上绘制一个图标（前景色 fg）
+// 在指定画布上绘制单色图标（24px 设计基准，按比例缩放）
 void drawIcon(QPainter &p, IconRenderer::Icon which, const QColor &fg, int px) {
     p.setRenderHint(QPainter::Antialiasing, true);
     QPen pen(fg);
@@ -290,6 +291,7 @@ void drawIcon(QPainter &p, IconRenderer::Icon which, const QColor &fg, int px) {
 // App 主图标（9 版方案，每版自带色彩）
 // 256×256 设计基准
 // ====================================================================
+// 在指定画布上绘制多色 App 主图标（96px 设计基准，含 9 款可选方案）
 void drawAppIcon(QPainter &p, IconRenderer::Icon which, int px) {
     p.setRenderHint(QPainter::Antialiasing, true);
     double s = px / 96.0;
@@ -454,6 +456,7 @@ void drawAppIcon(QPainter &p, IconRenderer::Icon which, int px) {
 
 } // anonymous namespace
 
+// 生成单色图标 QPixmap，按设备像素比放大保矢量清晰
 QPixmap IconRenderer::pixmap(Icon which, const QColor &fg, int px) {
     // ★ 关键：按设备像素比放大底图，得到真矢量级清晰度
     qreal dpr = qApp ? qApp->devicePixelRatio() : 1.0;
@@ -469,10 +472,12 @@ QPixmap IconRenderer::pixmap(Icon which, const QColor &fg, int px) {
     return pm;
 }
 
+// 生成单色图标 QIcon，由 pixmap 封装
 QIcon IconRenderer::icon(Icon which, const QColor &fg, int px) {
     return QIcon(pixmap(which, fg, px));
 }
 
+// 生成多色 App 主图标 QPixmap（DPI 感知）
 QPixmap IconRenderer::appIcon(Icon which, int px) {
     qreal dpr = qApp ? qApp->devicePixelRatio() : 1.0;
     QPixmap pm(int(px * dpr), int(px * dpr));
@@ -486,6 +491,7 @@ QPixmap IconRenderer::appIcon(Icon which, int px) {
     return pm;
 }
 
+// 生成原生分辨率 App 主图标（无 DPI 缩放，用于窗口图标）
 QPixmap IconRenderer::appIconRaw(Icon which, int px) {
     // 给 QApplication::setWindowIcon 用：每个像素尺寸都给一份原生分辨率的位图
     QPixmap pm(px, px);
@@ -498,6 +504,7 @@ QPixmap IconRenderer::appIconRaw(Icon which, int px) {
     return pm;
 }
 
+// 获取默认 App 图标类型（当前选中方案）
 IconRenderer::Icon IconRenderer::defaultAppIcon() {
     // 用户挑选完图标后，改这一行即可（01-09）
     return AppIcon04_CalendarDot;

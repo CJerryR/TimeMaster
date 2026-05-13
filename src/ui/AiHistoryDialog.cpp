@@ -21,6 +21,7 @@
 
 namespace timemaster {
 
+// 构造函数：初始化弹窗，构建 UI 并连接数据库批次变更信号
 AiHistoryDialog::AiHistoryDialog(Database *db, QWidget *parent)
     : QDialog(parent), m_db(db)
 {
@@ -39,6 +40,7 @@ AiHistoryDialog::AiHistoryDialog(Database *db, QWidget *parent)
     reloadBatches();
 }
 
+// 构建界面：标题行 + 左右分栏（批次列表 / 事件详情）+ 底部按钮
 void AiHistoryDialog::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(22, 20, 22, 18);
@@ -175,6 +177,7 @@ void AiHistoryDialog::buildUi() {
     connect(m_deleteEventBtn, &QPushButton::clicked, this, &AiHistoryDialog::onDeleteEvent);
 }
 
+// 更新所有界面文字到当前语言
 void AiHistoryDialog::applyLanguage() {
     setWindowTitle(I18n::t("history.title"));
     if (m_titleLabel)    m_titleLabel->setText(I18n::t("history.title"));
@@ -202,6 +205,7 @@ void AiHistoryDialog::applyLanguage() {
     }
 }
 
+// 应用完整 QSS 主题样式
 void AiHistoryDialog::applyTheme() {
     auto &t = Theme::instance();
     QString textPrim = t.textPrimary().name();
@@ -346,6 +350,7 @@ void AiHistoryDialog::applyTheme() {
     /*10*/.arg(container));
 }
 
+// 重新加载批次列表：从 DB 拉取并刷新左栏
 void AiHistoryDialog::reloadBatches() {
     m_batches = m_db->getAiBatches();
     QString prevId = currentBatchId();
@@ -391,11 +396,13 @@ void AiHistoryDialog::reloadBatches() {
     }
 }
 
+// 获取当前选中的批次 ID
 QString AiHistoryDialog::currentBatchId() const {
     auto *it = m_batchList ? m_batchList->currentItem() : nullptr;
     return it ? it->data(Qt::UserRole).toString() : QString();
 }
 
+// 左栏选中切换：加载批次详情和事件列表到右栏
 void AiHistoryDialog::onBatchSelected() {
     QString id = currentBatchId();
     if (id.isEmpty()) return;
@@ -432,6 +439,7 @@ void AiHistoryDialog::onBatchSelected() {
     m_deleteEventBtn->setEnabled(false);
 }
 
+// 撤销整批：确认后删除该批次全部事件及批次记录
 void AiHistoryDialog::onUndoBatch() {
     QString id = currentBatchId();
     if (id.isEmpty()) return;
@@ -445,6 +453,7 @@ void AiHistoryDialog::onUndoBatch() {
     m_db->deleteBatch(id);
 }
 
+// 归档批次：确认后清除批次记录但保留事件
 void AiHistoryDialog::onArchiveBatch() {
     QString id = currentBatchId();
     if (id.isEmpty()) return;
@@ -457,6 +466,7 @@ void AiHistoryDialog::onArchiveBatch() {
     m_db->clearBatchRecord(id);
 }
 
+// 删除单条事件：确认后删除并刷新右栏
 void AiHistoryDialog::onDeleteEvent() {
     auto *it = m_eventList->currentItem();
     if (!it) return;

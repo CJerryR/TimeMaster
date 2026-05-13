@@ -15,6 +15,7 @@
 
 namespace timemaster {
 
+// 构造函数：创建标题标签并连接语言切换信号
 RhythmCardWidget::RhythmCardWidget(QWidget *parent) : QWidget(parent) {
     setMinimumHeight(160);   // V4.2: was 120, give chart + labels room
 
@@ -31,11 +32,13 @@ RhythmCardWidget::RhythmCardWidget(QWidget *parent) : QWidget(parent) {
     });
 }
 
+// 设置每小时时段数据并触发重绘
 void RhythmCardWidget::setHourlyData(const QList<HourlyBucket> &buckets) {
     m_buckets = buckets;
     update();
 }
 
+// 自绘：24小时柱状图，顶部标题 + 垂直条形 + 底部时刻标签（0/6/12/18/24）
 void RhythmCardWidget::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);

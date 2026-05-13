@@ -32,6 +32,7 @@ namespace timemaster {
 static constexpr int kDefaultPastDays   = 7;
 static constexpr int kDefaultFutureDays = 14;
 
+// 构造函数：构建完整设置面板（滚动区域 + 固定按钮行），加载既有配置
 SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidget *parent)
     : QDialog(parent), m_ai(ai)
 {
@@ -210,7 +211,7 @@ SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidge
     root->addWidget(ctxBox);
 
     // ============= V4.3 #7 — AI 操作日历权限 =============
-    // 权限模式：默认每次操作弹审批卡，用户也可以勾选"总是允许"
+    // 类似 Claude Code 的权限模式：默认每次操作弹审批卡，用户也可以勾选"总是允许"
     auto *permBox = new QGroupBox(I18n::t("settings.ai_perm.group"));
     permBox->setObjectName("SettingsGroup");
     auto *permLayout = new QVBoxLayout(permBox);
@@ -380,16 +381,19 @@ SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidge
     applyTheme();
 }
 
+// 窗口尺寸变化：重新定位眼睛按钮
 void SettingsDialog::resizeEvent(QResizeEvent *e) {
     QDialog::resizeEvent(e);
     repositionEyeBtn();
 }
 
+// 窗口显示事件：重新定位眼睛按钮
 void SettingsDialog::showEvent(QShowEvent *e) {
     QDialog::showEvent(e);
     repositionEyeBtn();
 }
 
+// 将眼睛按钮定位到 API Key 输入框右侧边缘
 void SettingsDialog::repositionEyeBtn() {
     if (!m_eyeBtn || !m_apiKeyEdit || !m_keyHost) return;
     QRect editGeom = m_apiKeyEdit->geometry();
@@ -399,11 +403,13 @@ void SettingsDialog::repositionEyeBtn() {
     m_eyeBtn->raise();
 }
 
+// 切换 API Key 明文/密文显示
 void SettingsDialog::onToggleVisibility() {
     m_keyVisible = !m_keyVisible;
     m_apiKeyEdit->setEchoMode(m_keyVisible ? QLineEdit::Normal : QLineEdit::Password);
 }
 
+// 保存所有配置项到 QSettings 和 Preferences
 void SettingsDialog::onSave() {
     QString key = m_apiKeyEdit->text().trimmed();
     QSettings s;
@@ -437,6 +443,7 @@ void SettingsDialog::onSave() {
     accept();
 }
 
+// 应用主题：设置完整 QSS 样式并重定位眼睛按钮
 void SettingsDialog::applyTheme() {
     auto &t = Theme::instance();
     setStyleSheet(t.globalStylesheet() + QString(R"(

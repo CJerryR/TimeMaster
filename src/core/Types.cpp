@@ -8,6 +8,7 @@
 
 namespace timemaster {
 
+// 亮色主题颜色映射表：每种颜色对应浅色背景、深色文字和高亮边框
 QHash<EventColor, ColorPalette> eventColorsLight() {
     return {
         {EventColor::Red,    {QColor("#fee2e2"), QColor("#dc2626"), QColor("#fca5a5"), "红色"}},
@@ -25,6 +26,7 @@ QHash<EventColor, ColorPalette> eventColorsLight() {
     };
 }
 
+// 暗色主题颜色映射表：每种颜色对应深色背景、浅色文字和高亮边框
 QHash<EventColor, ColorPalette> eventColorsDark() {
     return {
         {EventColor::Red,    {QColor("#3f1a1a"), QColor("#fca5a5"), QColor("#7f1d1d"), "红色"}},
@@ -42,6 +44,7 @@ QHash<EventColor, ColorPalette> eventColorsDark() {
     };
 }
 
+// 将 EventCategory 枚举转换为持久化用的英文 key
 QString categoryToString(EventCategory c) {
     switch (c) {
         case EventCategory::Work:          return "work";
@@ -56,6 +59,7 @@ QString categoryToString(EventCategory c) {
     return "other";
 }
 
+// 返回事件分类在当前语言（I18n）下的显示名称
 QString categoryLabel(EventCategory c) {
     switch (c) {
         case EventCategory::Work:          return I18n::t("cat.work");
@@ -70,6 +74,7 @@ QString categoryLabel(EventCategory c) {
     return I18n::t("cat.other");
 }
 
+// 将英文 key 字符串解析为 EventCategory 枚举，无法识别时返回 Other
 EventCategory stringToCategory(const QString &s) {
     if (s == "work") return EventCategory::Work;
     if (s == "study") return EventCategory::Study;
@@ -81,6 +86,7 @@ EventCategory stringToCategory(const QString &s) {
     return EventCategory::Other;
 }
 
+// 将 EventColor 枚举转换为持久化用的英文名称（按索引映射）
 QString colorToString(EventColor c) {
     static const QStringList names = {
         "red","orange","yellow","green","teal","blue",
@@ -91,6 +97,7 @@ QString colorToString(EventColor c) {
     return names[idx];
 }
 
+// 将英文名称字符串解析为 EventColor 枚举，找不到时返回 Blue
 EventColor stringToColor(const QString &s) {
     static const QHash<QString, EventColor> m = {
         {"red", EventColor::Red}, {"orange", EventColor::Orange},
@@ -103,6 +110,7 @@ EventColor stringToColor(const QString &s) {
     return m.value(s, EventColor::Blue);
 }
 
+// 将 EventPriority 枚举转换为持久化用的英文 key
 QString priorityToString(EventPriority p) {
     switch (p) {
         case EventPriority::Urgent: return "urgent";
@@ -112,6 +120,7 @@ QString priorityToString(EventPriority p) {
     return "normal";
 }
 
+// 返回事件优先级在当前语言（I18n）下的显示名称
 QString priorityLabel(EventPriority p) {
     switch (p) {
         case EventPriority::Urgent: return I18n::t("pri.urgent");
@@ -121,12 +130,14 @@ QString priorityLabel(EventPriority p) {
     return I18n::t("pri.normal");
 }
 
+// 将英文 key 字符串解析为 EventPriority 枚举，无法识别时返回 Normal
 EventPriority stringToPriority(const QString &s) {
     if (s == "urgent") return EventPriority::Urgent;
     if (s == "low")    return EventPriority::Low;
     return EventPriority::Normal;
 }
 
+// 将 EventSource 枚举转换为持久化用的英文 key
 QString sourceToString(EventSource s) {
     switch (s) {
         case EventSource::Manual:  return "manual";
@@ -136,12 +147,14 @@ QString sourceToString(EventSource s) {
     return "manual";
 }
 
+// 将英文 key 字符串解析为 EventSource 枚举，无法识别时返回 Manual
 EventSource stringToSource(const QString &s) {
     if (s == "ai_parse") return EventSource::AiParse;
     if (s == "chat")     return EventSource::Chat;
     return EventSource::Manual;
 }
 
+// 返回全部 EventCategory 枚举值的列表（按逻辑顺序排列）
 QList<EventCategory> allCategories() {
     return {
         EventCategory::Work, EventCategory::Study, EventCategory::Entertainment,
@@ -150,6 +163,7 @@ QList<EventCategory> allCategories() {
     };
 }
 
+// 返回全部 EventColor 枚举值的列表（按彩虹色顺序排列）
 QList<EventColor> allColors() {
     return {
         EventColor::Red, EventColor::Orange, EventColor::Yellow, EventColor::Green,
@@ -158,10 +172,12 @@ QList<EventColor> allColors() {
     };
 }
 
+// 返回全部 EventPriority 枚举值的列表（紧急->普通->低优先级）
 QList<EventPriority> allPriorities() {
     return { EventPriority::Urgent, EventPriority::Normal, EventPriority::Low };
 }
 
+// 为每种事件分类返回一个合适的默认颜色
 EventColor categoryDefaultColor(EventCategory c) {
     switch (c) {
         case EventCategory::Work:          return EventColor::Blue;

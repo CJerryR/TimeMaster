@@ -8,7 +8,7 @@
 
 找到后会通过 `QFontDatabase` 注册并自动应用为全局字体。
 
-## 推荐字体（接近现代网页应用的字体观感）
+## 推荐字体（接近 Claude 网页的字体观感）
 
 ### 英文 / 符号：Inter
 
@@ -35,7 +35,7 @@
 - macOS: SF Pro Text + PingFang SC
 - Linux: 系统的 Noto Sans CJK SC
 
-观感会接近系统默认，但与目标字体气质略有差距。
+观感会接近系统默认，但与 Claude 网页的字体气质略有差距。
 
 ## 如何确认成功加载
 

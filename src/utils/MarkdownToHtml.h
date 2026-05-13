@@ -18,8 +18,10 @@ namespace timemaster {
  *  · 自动转义 < > & 避免 HTML 注入
  * 设计目标：流式增量也能渲染（即使是半段也能输出合理的 HTML）。
  */
+// Markdown 转 HTML 静态工具：支持标题/粗体/斜体/删除线/列表/引用/代码块，HTML 实体转义防注入
 class MarkdownToHtml {
 public:
+    // 将 Markdown 文本转换为 HTML 字符串
     static QString convert(const QString &md);
 };
 

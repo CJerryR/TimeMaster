@@ -18,6 +18,7 @@
 
 namespace timemaster {
 
+// 创建单个迷你指标卡片（Frame + caption + value）
 static QFrame *makeMiniCard(QLabel **valueOut, QLabel **captionOut) {
     auto *f = new QFrame;
     f->setObjectName("CompCard");
@@ -49,6 +50,7 @@ static QFrame *makeMiniCard(QLabel **valueOut, QLabel **captionOut) {
     return f;
 }
 
+// 构造函数：构建过去/未来双栏布局，连接主题/语言信号
 ComparisonWidget::ComparisonWidget(Database *db, QWidget *parent)
     : QWidget(parent), m_db(db)
 {
@@ -108,6 +110,7 @@ ComparisonWidget::ComparisonWidget(Database *db, QWidget *parent)
     applyTheme();
 }
 
+// 语言切换更新：设置所有文本标签并刷新数据
 void ComparisonWidget::applyLanguage() {
     if (m_title)      m_title->setText(I18n::t("widget.comparison"));
     if (m_pastHeader) m_pastHeader->setText(I18n::t("widget.past_header"));
@@ -119,6 +122,7 @@ void ComparisonWidget::applyLanguage() {
     refresh();
 }
 
+// 查询过去7天/未来7天事件数据，更新数值及忙闲对比文案
 void ComparisonWidget::refresh() {
     if (!m_db) return;
     QDateTime now = QDateTime::currentDateTime();
@@ -180,6 +184,7 @@ void ComparisonWidget::refresh() {
     m_deltaLabel->setStyleSheet(QString("color:%1;font-size:14px;font-weight:600;").arg(color));
 }
 
+// 应用对比面板 QSS：双栏卡片框 + 迷你卡片 + 数字/标题颜色
 void ComparisonWidget::applyTheme() {
     auto &t = Theme::instance();
     QString cardBg = t.bgContainer().name();

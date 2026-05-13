@@ -18,21 +18,29 @@ namespace timemaster {
 
 class DeepSeekClient;
 
+// 设置对话框：API Key、AI 日历上下文、AI 操作权限、外观、语言、周起始日、存储路径、版本信息
 class SettingsDialog : public QDialog {
     Q_OBJECT
 public:
+    // 构造函数
     explicit SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidget *parent = nullptr);
 
 protected:
+    // 窗口尺寸变化：重新定位密码可见按钮
     void resizeEvent(QResizeEvent *e) override;
+    // 窗口显示事件：重新定位密码可见按钮
     void showEvent(QShowEvent *e) override;
 
 private slots:
+    // 应用主题样式：刷新全局 QSS
     void applyTheme();
+    // 保存设置：持久化 API Key、AI 上下文、周起始日、权限等配置
     void onSave();
+    // 切换 API Key 可见性：明文/密码模式互切
     void onToggleVisibility();
 
 private:
+    // 定位密码可见按钮到输入框右侧
     void repositionEyeBtn();
 
     DeepSeekClient *m_ai;

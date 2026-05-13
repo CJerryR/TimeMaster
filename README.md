@@ -1,12 +1,20 @@
-# 时间管理大师 · Time Master · V4.3.2
+# 时间管理大师 · Time Master · V4.3.3
 
 好用的日历和时间管理工具，基于 Qt 6 + C++17 构建，使用 DeepSeek 模型把自然语言转成结构化日程。
 
-**当前版本：V4.3.2** — 见 [CHANGES_V4_3.md](CHANGES_V4_3.md) 了解本轮改动。
+**当前版本：V4.3.3** — 见 [CHANGES_V4_3.md](CHANGES_V4_3.md) 了解 V4.3 改动；见 [CHANGES_V4_3_3.md](CHANGES_V4_3_3.md) 了解 V4.3.3 改动。
 
 ![brand-red](https://img.shields.io/badge/brand-%23D97757-D97757) ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![Qt6](https://img.shields.io/badge/Qt-6-41cd52) ![SQLite](https://img.shields.io/badge/storage-SQLite-003B57)
 
 
+
+## V4.3.3 亮点
+
+* **对话多轮记忆** AI 助手记住上下文，不再每句都像全新会话——追问"改到下午 4 点"能知道在说哪个日程。
+* **语言切换即时生效** 左下角「A」/「中」按钮点击后字形立刻刷新，不再要等切主题才更新。
+* **时段事件文字上移** 时间格内的日程文字整体上移 3px，底部不再被裁切遮挡。
+* **AI 人设调整** 助手称呼用户为「主人」，自称「小师」。
+* **66 个源文件补全中文注释** 整体可读性大幅提升。
 
 ## V4.3.2 亮点
 

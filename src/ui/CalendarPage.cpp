@@ -41,6 +41,7 @@
 
 namespace timemaster {
 
+// 构造函数：构建UI布局、连接数据库/AI/主题/语言信号、初始刷新
 CalendarPage::CalendarPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     : QWidget(parent), m_db(db), m_ai(ai)
 {
@@ -64,6 +65,7 @@ CalendarPage::CalendarPage(Database *db, DeepSeekClient *ai, QWidget *parent)
     refreshEmptyState();
 }
 
+// 构建完整UI：顶栏导航、视图切换、AI解析面板、月/周/日视图栈、空状态覆盖、快捷键绑定
 void CalendarPage::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(24, 20, 24, 20);
@@ -313,6 +315,7 @@ void CalendarPage::buildUi() {
     setView(CalendarView::Month);
 }
 
+// 展开AI浮动面板：定位显示并聚焦输入框
 void CalendarPage::expandAiPanel() {
     if (!m_aiExpanded) return;
     m_parseStatus->clear();
@@ -323,12 +326,14 @@ void CalendarPage::expandAiPanel() {
     m_parseInput->setFocus();
 }
 
+// 折叠AI浮动面板：隐藏并清除状态
 void CalendarPage::collapseAiPanel() {
     if (!m_aiExpanded) return;
     m_aiExpanded->hide();
     m_parseStatus->clear();
 }
 
+// 定位AI浮动面板到紧凑输入栏下方居中
 void CalendarPage::positionAiPopup() {
     if (!m_aiExpanded || !m_aiBar) return;
     // Anchor the popup just below the compact pill, centered horizontally on
@@ -342,6 +347,7 @@ void CalendarPage::positionAiPopup() {
     m_aiExpanded->setGeometry(x, y, popupW, popupH);
 }
 
+// 窗口大小变化时重新定位AI浮动面板位置
 void CalendarPage::resizeEvent(QResizeEvent *e) {
     QWidget::resizeEvent(e);
     if (m_aiExpanded && m_aiExpanded->isVisible()) {
@@ -349,6 +355,7 @@ void CalendarPage::resizeEvent(QResizeEvent *e) {
     }
 }
 
+// 鼠标点击外部区域时自动折叠AI面板（聚光灯行为）
 void CalendarPage::mousePressEvent(QMouseEvent *e) {
     // V4.2 #5: click outside the floating popup closes it (Spotlight behavior).
     if (m_aiExpanded && m_aiExpanded->isVisible()) {
@@ -360,6 +367,7 @@ void CalendarPage::mousePressEvent(QMouseEvent *e) {
     QWidget::mousePressEvent(e);
 }
 
+// 事件过滤器：处理AI紧凑输入点击展开和焦点丢失自动折叠
 bool CalendarPage::eventFilter(QObject *o, QEvent *e) {
     // Click on the compact input -> expand the AI panel
     if (o == m_aiCompactInput && e->type() == QEvent::MouseButtonPress) {
@@ -386,6 +394,7 @@ bool CalendarPage::eventFilter(QObject *o, QEvent *e) {
     return QWidget::eventFilter(o, e);
 }
 
+// 应用语言设置：更新所有按钮和标签的文本
 void CalendarPage::applyLanguage() {
     if (m_btnToday)  m_btnToday->setText(I18n::t("calendar.today"));
     if (m_btnDay)    m_btnDay->setText(I18n::t("calendar.view.day"));
@@ -412,6 +421,7 @@ void CalendarPage::applyLanguage() {
     refreshEmptyState();
 }
 
+// 应用主题样式：刷新全局QSS和图标颜色
 void CalendarPage::applyTheme() {
     auto &t = Theme::instance();
 
@@ -567,6 +577,7 @@ void CalendarPage::applyTheme() {
     }
 }
 
+// 刷新空状态覆盖层：无事件时显示快捷模板入口，有事件时隐藏
 void CalendarPage::refreshEmptyState() {
     if (!m_db || !m_emptyState) return;
     bool isEmpty = m_db->getAllEvents().isEmpty();
@@ -585,6 +596,7 @@ void CalendarPage::refreshEmptyState() {
     }
 }
 
+// 插入快速模板事件：0=晨间惯例，1=深度工作，2=周复盘
 void CalendarPage::insertTemplate(int which) {
     // Builds a small starter set of events so the calendar isn't blank.
     QDate today = QDate::currentDate();
@@ -640,6 +652,7 @@ void CalendarPage::insertTemplate(int which) {
     refreshEmptyState();
 }
 
+// 切换视图模式：更新按钮选中态、切换视图栈、刷新数据、滚动到7点
 void CalendarPage::setView(CalendarView v) {
     m_view = v;
     switchViewWidget();
@@ -653,6 +666,7 @@ void CalendarPage::setView(CalendarView v) {
     }
 }
 
+// 切换QStackedWidget的当前页面对应视图模式
 void CalendarPage::switchViewWidget() {
     switch (m_view) {
         case CalendarView::Month: m_stack->setCurrentWidget(m_monthView); break;
@@ -661,11 +675,13 @@ void CalendarPage::switchViewWidget() {
     }
 }
 
+// 跳转到今天并刷新
 void CalendarPage::goToday() {
     m_currentDate = QDate::currentDate();
     refresh();
 }
 
+// 跳转到下一段（日+1天，周+7天，月+1月）
 void CalendarPage::goNext() {
     switch (m_view) {
         case CalendarView::Day:   m_currentDate = m_currentDate.addDays(1);   break;
@@ -675,6 +691,7 @@ void CalendarPage::goNext() {
     refresh();
 }
 
+// 跳转到上一段（日-1天，周-7天，月-1月）
 void CalendarPage::goPrev() {
     switch (m_view) {
         case CalendarView::Day:   m_currentDate = m_currentDate.addDays(-1);   break;
@@ -684,6 +701,7 @@ void CalendarPage::goPrev() {
     refresh();
 }
 
+// 刷新：按当前视图计算日期范围，从数据库查询事件并分发到三个子视图
 void CalendarPage::refresh() {
     QDate gridStart, gridEnd;
     switch (m_view) {
@@ -721,6 +739,7 @@ void CalendarPage::refresh() {
     updateHeader();
 }
 
+// 返回本地化的月份名称（通过I18n键查找）
 QString CalendarPage::monthName(int month) const {
     static const char *keys[] = {
         "month.jan","month.feb","month.mar","month.apr","month.may","month.jun",
@@ -730,6 +749,7 @@ QString CalendarPage::monthName(int month) const {
     return I18n::t(keys[month - 1]);
 }
 
+// 更新标题栏：根据视图模式和日期生成本地化的日期范围文本
 void CalendarPage::updateHeader() {
     if (!m_titleLabel) return;
     QString title;
@@ -777,6 +797,7 @@ void CalendarPage::updateHeader() {
     m_titleLabel->setText(title);
 }
 
+// 打开新建事件对话框：默认预设下一整点时间
 void CalendarPage::openCreateDialog(const QDateTime &dt) {
     QDateTime start = dt;
     if (!start.isValid()) {
@@ -793,6 +814,7 @@ void CalendarPage::openCreateDialog(const QDateTime &dt) {
     }
 }
 
+// 点击事件：打开编辑对话框，支持修改和删除
 void CalendarPage::onEventClicked(const CalendarEvent &event) {
     EventDialog dlg(this);
     dlg.setupForEdit(event);
@@ -807,10 +829,12 @@ void CalendarPage::onEventClicked(const CalendarEvent &event) {
     }
 }
 
+// 点击时间槽：以该时间为预设打开新建事件对话框
 void CalendarPage::onTimeSlotClicked(const QDateTime &dt) {
     openCreateDialog(dt);
 }
 
+// 月视图点击日期：切换到该日的日视图
 void CalendarPage::onMonthDateClicked(const QDate &d) {
     // V4.4 #2 — 月视图点格子直接切到日视图（之前是弹新建事件对话框）。
     // 用户原话："月视图点击日的块应该直接切日视图。"
@@ -819,6 +843,7 @@ void CalendarPage::onMonthDateClicked(const QDate &d) {
     setView(CalendarView::Day);
 }
 
+// 月视图点击"+N"溢出：切换到该日的日视图
 void CalendarPage::onMonthOverflowClicked(const QDate &d, const QList<CalendarEvent> &events) {
     // V4.3 #9 — 之前点 "+N" 会弹一个 QDialog 列出当天所有事件，繁琐且和日视图重复。
     // 改成直接切到日视图并定位到点击的日期，更顺滑。
@@ -827,6 +852,7 @@ void CalendarPage::onMonthOverflowClicked(const QDate &d, const QList<CalendarEv
     setView(CalendarView::Day);
 }
 
+// 点击AI解析按钮：校验API Key并发送解析请求
 void CalendarPage::onParseClicked() {
     QString text = m_parseInput->text().trimmed();
     if (text.isEmpty()) return;
@@ -840,6 +866,7 @@ void CalendarPage::onParseClicked() {
     m_ai->parseSchedule(text);
 }
 
+// AI解析完成：显示结果对话框，选中项批量导入数据库
 void CalendarPage::onParseFinished(const QList<ScheduleSuggestion> &items) {
     m_parseButton->setEnabled(true);
     if (items.isEmpty()) {
@@ -885,12 +912,14 @@ void CalendarPage::onParseFinished(const QList<ScheduleSuggestion> &items) {
     QTimer::singleShot(400, this, &CalendarPage::collapseAiPanel);
 }
 
+// AI解析出错：恢复按钮状态并显示错误警告
 void CalendarPage::onParseError(const QString &msg) {
     m_parseButton->setEnabled(true);
     m_parseStatus->setText(I18n::t("calendar.parse.failed"));
     QMessageBox::warning(this, I18n::t("calendar.parse.failed"), msg);
 }
 
+// 打开AI解析历史记录对话框
 void CalendarPage::onHistoryClicked() {
     AiHistoryDialog dlg(m_db, this);
     dlg.exec();

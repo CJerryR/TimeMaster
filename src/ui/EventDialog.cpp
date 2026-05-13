@@ -26,6 +26,7 @@
 
 namespace timemaster {
 
+// 构造函数：初始化弹窗标题、模态属性、最小尺寸，构建 UI 并应用主题
 EventDialog::EventDialog(QWidget *parent) : QDialog(parent) {
     setObjectName("EventDialog");          // V4.3 #2 — QSS 钩子让对话框背景跟主题
     setWindowTitle(I18n::t("event.title"));
@@ -38,6 +39,7 @@ EventDialog::EventDialog(QWidget *parent) : QDialog(parent) {
     connect(&Theme::instance(), &Theme::changed, this, &EventDialog::applyTheme);
 }
 
+// 构建完整界面布局：标题/时间/类别/优先级/颜色/地点/提醒/备注各字段
 void EventDialog::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(28, 24, 28, 20);
@@ -256,6 +258,7 @@ void EventDialog::buildUi() {
     }
 }
 
+// 应用主题：设置 QSS 样式并刷新所有按钮组外观
 void EventDialog::applyTheme() {
     auto &t = Theme::instance();
     // V4.3 #2 — 显式给 QDialog 上背景色，不再依赖系统 palette；同时给 title
@@ -271,6 +274,7 @@ void EventDialog::applyTheme() {
     refreshColorButtons();
 }
 
+// 设置为创建模式：清空所有字段，填充默认起始时间
 void EventDialog::setupForCreate(const QDateTime &defaultStart) {
     m_isEditing = false;
     m_eventId.clear();
@@ -304,6 +308,7 @@ void EventDialog::setupForCreate(const QDateTime &defaultStart) {
     m_titleEdit->setFocus();
 }
 
+// 设置为编辑模式：用事件数据回填各字段，显示删除按钮
 void EventDialog::setupForEdit(const CalendarEvent &event) {
     m_isEditing = true;
     m_eventId = event.id;
@@ -332,6 +337,7 @@ void EventDialog::setupForEdit(const CalendarEvent &event) {
     m_titleEdit->setFocus();
 }
 
+// 全天开关切换：更新日期时间显示格式（含时分或不含）
 void EventDialog::onAllDayToggled(bool checked) {
     if (checked) {
         m_startEdit->setDisplayFormat("yyyy-MM-dd");
@@ -342,6 +348,7 @@ void EventDialog::onAllDayToggled(bool checked) {
     }
 }
 
+// 类别按钮点击：更新类别并同步默认颜色
 void EventDialog::onCategoryClicked(int idx) {
     auto cats = allCategories();
     if (idx < 0 || idx >= cats.size()) return;
@@ -351,6 +358,7 @@ void EventDialog::onCategoryClicked(int idx) {
     refreshColorButtons();
 }
 
+// 优先级按钮点击：更新选中的优先级
 void EventDialog::onPriorityClicked(int idx) {
     auto prios = allPriorities();
     if (idx < 0 || idx >= prios.size()) return;
@@ -358,6 +366,7 @@ void EventDialog::onPriorityClicked(int idx) {
     refreshPriorityButtons();
 }
 
+// 颜色按钮点击：更新选中的颜色
 void EventDialog::onColorClicked(int idx) {
     auto cols = allColors();
     if (idx < 0 || idx >= cols.size()) return;
@@ -365,6 +374,7 @@ void EventDialog::onColorClicked(int idx) {
     refreshColorButtons();
 }
 
+// 刷新类别按钮：循环设置选中态和悬停/激活样式
 void EventDialog::refreshCategoryButtons() {
     auto cats = allCategories();
     auto &theme = Theme::instance();
@@ -391,6 +401,7 @@ void EventDialog::refreshCategoryButtons() {
     }
 }
 
+// 刷新优先级按钮：循环设置选中态和颜色标签
 void EventDialog::refreshPriorityButtons() {
     auto prios = allPriorities();
     QStringList tints = {"#B8453E", "#C28E3D", "#6E6760"};  // 紧急(砖红) · 重要(琥珀金) · 普通(暖灰)
@@ -415,6 +426,7 @@ void EventDialog::refreshPriorityButtons() {
     }
 }
 
+// 刷新颜色按钮：循环设置选中态和色块样式
 void EventDialog::refreshColorButtons() {
     auto cols = allColors();
     auto pal = Theme::instance().palette();
@@ -439,12 +451,14 @@ void EventDialog::refreshColorButtons() {
     }
 }
 
+// 同步结束时间下限：结束时间小于开始时间时自动后推 1 小时
 void EventDialog::syncEndDateMin() {
     if (m_endEdit->dateTime() < m_startEdit->dateTime()) {
         m_endEdit->setDateTime(m_startEdit->dateTime().addSecs(3600));
     }
 }
 
+// 提交校验：标题不能为空，结束时间须晚于开始时间，通过后接受弹窗
 void EventDialog::onSubmit() {
     if (m_titleEdit->text().trimmed().isEmpty()) {
         QMessageBox::information(this, I18n::t("common.info"), I18n::t("event.title_required"));
@@ -458,6 +472,7 @@ void EventDialog::onSubmit() {
     accept();
 }
 
+// 删除确认弹窗：用户确认后发送 requestDelete 信号并关闭弹窗
 void EventDialog::onDeleteClicked() {
     auto ret = QMessageBox::question(this, I18n::t("event.delete_title"),
         I18n::t("event.delete_confirm_fmt").arg(m_titleEdit->text().trimmed()),
@@ -468,6 +483,7 @@ void EventDialog::onDeleteClicked() {
     }
 }
 
+// 构建并返回最终 CalendarEvent 对象（含 ID 生成逻辑）
 CalendarEvent EventDialog::result() const {
     CalendarEvent e;
     e.id = m_isEditing ? m_eventId : Database::generateId();

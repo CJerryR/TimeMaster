@@ -16,15 +16,18 @@
 
 namespace timemaster {
 
+// 构造函数：初始化连接名
 Database::Database(QObject *parent) : QObject(parent) {
     m_connectionName = QStringLiteral("timemaster-main");
 }
 
+// 析构函数：关闭并移除数据库连接
 Database::~Database() {
     if (m_db.isOpen()) m_db.close();
     QSqlDatabase::removeDatabase(m_connectionName);
 }
 
+// 打开数据库：定位 database/ 目录，创建 SQLite 文件，启用 WAL 模式
 bool Database::open() {
     // ---- 数据库路径策略 ----
     // 1. 优先：项目根目录下的 database/（与 src/ 同级）。
@@ -77,6 +80,7 @@ bool Database::open() {
     return true;
 }
 
+// 创建四张核心表及索引
 bool Database::initSchema() {
     QSqlQuery q(m_db);
 
@@ -151,6 +155,7 @@ bool Database::initSchema() {
     return true;
 }
 
+// 为旧版本数据库补充新增列
 void Database::migrateSchema() {
     // 旧版数据库可能没有 ai_batch_id 列，尝试添加（失败说明已存在）
     QSqlQuery q(m_db);
@@ -158,10 +163,12 @@ void Database::migrateSchema() {
     // 注意：q.lastError() 在列已存在时会报错，正常忽略
 }
 
+// 生成 UUID 格式的唯一 ID
 QString Database::generateId() {
     return QUuid::createUuid().toString(QUuid::WithoutBraces);
 }
 
+// 将 SQL 查询结果行转为 CalendarEvent 结构体
 CalendarEvent Database::rowToEvent(const QSqlQuery &q) {
     CalendarEvent e;
     e.id = q.value("id").toString();
@@ -182,6 +189,7 @@ CalendarEvent Database::rowToEvent(const QSqlQuery &q) {
     return e;
 }
 
+// 获取全部事件，按起始时间升序排列
 QList<CalendarEvent> Database::getAllEvents() {
     QList<CalendarEvent> list;
     QSqlQuery q(m_db);
@@ -190,6 +198,7 @@ QList<CalendarEvent> Database::getAllEvents() {
     return list;
 }
 
+// 按时间范围重叠查询事件列表
 QList<CalendarEvent> Database::getEventsByRange(const QDateTime &start, const QDateTime &end) {
     QList<CalendarEvent> list;
     QSqlQuery q(m_db);
@@ -223,6 +232,7 @@ std::optional<CalendarEvent> Database::getEventById(const QString &id) {
     return rowToEvent(q);
 }
 
+// 插入新事件，发射 eventsChanged 信号
 bool Database::insertEvent(const CalendarEvent &event) {
     QSqlQuery q(m_db);
     q.prepare(R"SQL(
@@ -258,6 +268,7 @@ bool Database::insertEvent(const CalendarEvent &event) {
     return true;
 }
 
+// 更新事件可变字段，发射 eventsChanged 信号
 bool Database::updateEvent(const CalendarEvent &event) {
     QSqlQuery q(m_db);
     q.prepare(R"SQL(
@@ -296,6 +307,7 @@ bool Database::updateEvent(const CalendarEvent &event) {
     return true;
 }
 
+// 按 ID 删除事件，发射 eventsChanged 信号
 bool Database::deleteEvent(const QString &id) {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM events WHERE id = :id");
@@ -311,6 +323,7 @@ bool Database::deleteEvent(const QString &id) {
 
 // =================== AI 批次 ===================
 
+// 创建 AI 导入批次记录，返回批次 UUID
 QString Database::createAiBatch(const QString &sourceText, const QString &sourceType) {
     QString id = generateId();
     QSqlQuery q(m_db);
@@ -330,6 +343,7 @@ QString Database::createAiBatch(const QString &sourceText, const QString &source
     return id;
 }
 
+// 获取所有 AI 批次，附带存活事件计数
 QList<AiBatchInfo> Database::getAiBatches() {
     QList<AiBatchInfo> result;
     QSqlQuery q(m_db);
@@ -356,6 +370,7 @@ QList<AiBatchInfo> Database::getAiBatches() {
     return result;
 }
 
+// 获取某批次下的所有事件
 QList<CalendarEvent> Database::getBatchEvents(const QString &batchId) {
     QList<CalendarEvent> list;
     QSqlQuery q(m_db);
@@ -369,6 +384,7 @@ QList<CalendarEvent> Database::getBatchEvents(const QString &batchId) {
     return list;
 }
 
+// 删除整批事件和批次记录
 bool Database::deleteBatch(const QString &batchId) {
     QSqlQuery q(m_db);
     // 删事件
@@ -390,6 +406,7 @@ bool Database::deleteBatch(const QString &batchId) {
     return true;
 }
 
+// 只删除批次记录，保留事件
 bool Database::clearBatchRecord(const QString &batchId) {
     QSqlQuery q(m_db);
     q.prepare("UPDATE events SET ai_batch_id = NULL WHERE ai_batch_id = :b");
@@ -404,6 +421,7 @@ bool Database::clearBatchRecord(const QString &batchId) {
 
 // =================== 统计 ===================
 
+// 统计时间范围内各类别的总时长、事件数和百分比
 QList<CategoryStat> Database::getCategoryStats(const QDateTime &start, const QDateTime &end) {
     QList<CategoryStat> stats;
     auto events = getEventsByRange(start, end);
@@ -482,6 +500,7 @@ QList<CategoryStat> Database::getCategoryStats(const QDateTime &start, const QDa
     return stats;
 }
 
+// 按天聚合每日总时长和事件数
 QList<DailySummary> Database::getDailySummaries(const QDateTime &start, const QDateTime &end) {
     auto events = getEventsByRange(start, end);
     QMap<QDate, qint64> minutesMap;
@@ -530,6 +549,7 @@ QList<DailySummary> Database::getDailySummaries(const QDateTime &start, const QD
     return result;
 }
 
+// 统计 0-23 各小时段的总时长分布
 QList<HourlyBucket> Database::getHourlyDistribution(const QDateTime &start, const QDateTime &end) {
     auto events = getEventsByRange(start, end);
     qint64 buckets[24] = {};
@@ -568,6 +588,7 @@ QList<HourlyBucket> Database::getHourlyDistribution(const QDateTime &start, cons
     return result;
 }
 
+// 按来源类型统计事件数量
 int Database::eventCountBySource(EventSource source, const QDateTime &start, const QDateTime &end) {
     QSqlQuery q(m_db);
     q.prepare(R"SQL(
@@ -588,6 +609,7 @@ int Database::eventCountBySource(EventSource source, const QDateTime &start, con
 
 // ---- V4.3 #7 chat_actions CRUD ----
 
+// 记录一条 AI 聊天操作日志（增/删/改）
 bool Database::recordChatAction(const QString &op, const QString &eventId,
                                 const QString &snapshotJson, const QString &humanSummary) {
     QSqlQuery q(m_db);
@@ -608,6 +630,7 @@ bool Database::recordChatAction(const QString &op, const QString &eventId,
     return true;
 }
 
+// 获取最近 N 条操作记录，用于历史抽屉
 QList<ChatAction> Database::getRecentChatActions(int limit) {
     QList<ChatAction> out;
     QSqlQuery q(m_db);
@@ -631,6 +654,7 @@ QList<ChatAction> Database::getRecentChatActions(int limit) {
     return out;
 }
 
+// 删除单条操作记录
 bool Database::deleteChatActionRecord(const QString &id) {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM chat_actions WHERE id = :id");

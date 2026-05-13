@@ -22,33 +22,51 @@ namespace timemaster {
 
 class FlowLayout;
 
+// 日程编辑弹窗：标题/时间/全天/类别/优先级/颜色/地点/提醒/备注，支持创建和编辑两种模式
 class EventDialog : public QDialog {
     Q_OBJECT
 public:
+    // 构造函数
     explicit EventDialog(QWidget *parent = nullptr);
 
+    // 设为创建模式，填入默认起始时间
     void setupForCreate(const QDateTime &defaultStart);
+    // 设为编辑模式，用已有事件数据填充各字段
     void setupForEdit(const CalendarEvent &event);
 
+    // 获取弹窗内编辑好的日程对象
     CalendarEvent result() const;
 
 signals:
+    // 请求删除事件信号（编辑模式删除按钮触发）
     void requestDelete(const QString &id);
 
 private slots:
+    // 全天开关切换：调整时间格式显示
     void onAllDayToggled(bool checked);
+    // 类别按钮点击：更新选中类别和默认颜色
     void onCategoryClicked(int idx);
+    // 优先级按钮点击：更新选中优先级
     void onPriorityClicked(int idx);
+    // 颜色按钮点击：更新选中颜色
     void onColorClicked(int idx);
+    // 保存按钮：校验必填项后接受弹窗
     void onSubmit();
+    // 删除按钮：确认后发送删除信号
     void onDeleteClicked();
+    // 应用主题样式：刷新全局 QSS 和按钮状态
     void applyTheme();
 
 private:
+    // 构建 UI 布局：组装所有字段和操作按钮
     void buildUi();
+    // 刷新颜色按钮选中态和样式
     void refreshColorButtons();
+    // 刷新类别按钮选中态和样式
     void refreshCategoryButtons();
+    // 刷新优先级按钮选中态和样式
     void refreshPriorityButtons();
+    // 同步结束时间下限：确保结束不早于开始
     void syncEndDateMin();
 
     bool m_isEditing = false;

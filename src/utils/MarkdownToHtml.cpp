@@ -12,6 +12,7 @@ namespace timemaster {
 
 namespace {
 
+// HTML 实体转义：& < > 防止注入
 QString escapeHtml(const QString &s) {
     QString r = s;
     r.replace('&', "&amp;");
@@ -21,6 +22,7 @@ QString escapeHtml(const QString &s) {
 }
 
 // 处理一行内的行内语法（粗体、斜体、行内代码、删除线）
+// 处理行内语法：行内代码 -> 粗体 -> 斜体 -> 删除线
 QString applyInline(QString line) {
     // 1) 行内代码 `...` —— 最先处理，里面不再做替换
     static const QRegularExpression reCode(R"(`([^`]+)`)");
@@ -50,6 +52,7 @@ QString applyInline(QString line) {
 
 } // namespace
 
+// 主转换入口：逐行解析 Markdown，输出带内联样式的 HTML
 QString MarkdownToHtml::convert(const QString &md) {
     if (md.isEmpty()) return {};
 

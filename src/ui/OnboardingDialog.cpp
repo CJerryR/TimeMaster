@@ -18,6 +18,7 @@
 
 namespace timemaster {
 
+// 构造函数：初始化引导弹窗，构建 UI 并连接主题/语言信号
 OnboardingDialog::OnboardingDialog(DeepSeekClient *ai, QWidget *parent)
     : QDialog(parent), m_ai(ai)
 {
@@ -33,6 +34,7 @@ OnboardingDialog::OnboardingDialog(DeepSeekClient *ai, QWidget *parent)
     updateButtons();
 }
 
+// 构建引导界面：步骤点 + 堆叠面板 + 底部按钮行
 void OnboardingDialog::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(32, 28, 32, 24);
@@ -94,6 +96,7 @@ void OnboardingDialog::buildUi() {
     });
 }
 
+// 构建步骤 1：功能介绍页，含时钟图标、标题和说明文字
 void OnboardingDialog::buildStep1(QWidget *page) {
     auto *lay = new QVBoxLayout(page);
     lay->setContentsMargins(0, 20, 0, 20);
@@ -127,6 +130,7 @@ void OnboardingDialog::buildStep1(QWidget *page) {
     lay->addStretch();
 }
 
+// 构建步骤 2：语言选择页，中/英两个大按钮二选一
 void OnboardingDialog::buildStep2(QWidget *page) {
     auto *lay = new QVBoxLayout(page);
     lay->setContentsMargins(0, 36, 0, 20);
@@ -186,6 +190,7 @@ void OnboardingDialog::buildStep2(QWidget *page) {
     });
 }
 
+// 构建步骤 3：API Key 输入页，密码输入框
 void OnboardingDialog::buildStep3(QWidget *page) {
     auto *lay = new QVBoxLayout(page);
     lay->setContentsMargins(0, 32, 0, 20);
@@ -223,6 +228,7 @@ void OnboardingDialog::buildStep3(QWidget *page) {
     lay->addStretch();
 }
 
+// 更新所有标签文字到当前语言
 void OnboardingDialog::applyLanguage() {
     setWindowTitle(I18n::t("onboarding.title"));
     if (m_step1Title) m_step1Title->setText(I18n::t("onboarding.step1.title"));
@@ -239,6 +245,7 @@ void OnboardingDialog::applyLanguage() {
     updateButtons();
 }
 
+// 根据当前步骤：控制上一步可见性、下一步按钮文字
 void OnboardingDialog::updateButtons() {
     if (!m_stack || !m_nextBtn || !m_backBtn) return;
     int idx = m_stack->currentIndex();
@@ -248,6 +255,7 @@ void OnboardingDialog::updateButtons() {
                                    : I18n::t("onboarding.next"));
 }
 
+// 更新步骤指示点 objectName 以刷新样式
 void OnboardingDialog::updateStepDots() {
     if (m_stepDots.isEmpty() || !m_stack) return;
     int active = m_stack->currentIndex();
@@ -258,6 +266,7 @@ void OnboardingDialog::updateStepDots() {
     applyTheme();
 }
 
+// 进入下一步：或触发完成（最后一步）
 void OnboardingDialog::goNext() {
     if (!m_stack) return;
     int idx = m_stack->currentIndex();
@@ -269,18 +278,21 @@ void OnboardingDialog::goNext() {
     m_stack->setCurrentIndex(idx + 1);
 }
 
+// 返回上一步
 void OnboardingDialog::goBack() {
     if (!m_stack) return;
     int idx = m_stack->currentIndex();
     if (idx > 0) m_stack->setCurrentIndex(idx - 1);
 }
 
+// 跳过引导：持久化 onboarded 标记并关闭
 void OnboardingDialog::onSkip() {
     QSettings s;
     s.setValue("onboarded", true);
     reject();
 }
 
+// 完成引导：保存 API Key、标记已引导并接受
 void OnboardingDialog::onDone() {
     QString key = m_apiKeyEdit ? m_apiKeyEdit->text().trimmed() : QString();
     if (!key.isEmpty() && m_ai) {
@@ -291,6 +303,7 @@ void OnboardingDialog::onDone() {
     accept();
 }
 
+// 应用主题：设置完整 QSS 样式
 void OnboardingDialog::applyTheme() {
     auto &t = Theme::instance();
     setStyleSheet(t.globalStylesheet() + QString(R"(

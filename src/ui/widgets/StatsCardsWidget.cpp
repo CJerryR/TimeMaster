@@ -17,8 +17,10 @@
 namespace timemaster {
 
 // V4 § 6.5: cards 12px
+// 卡片圆角半径 12px
 static constexpr int CARD_RADIUS = 12;
 
+// 构造函数：创建四个 KPI 卡片并绑定主题/语言刷新
 StatsCardsWidget::StatsCardsWidget(QWidget *parent) : QWidget(parent) {
     auto *root = new QHBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
@@ -41,6 +43,7 @@ StatsCardsWidget::StatsCardsWidget(QWidget *parent) : QWidget(parent) {
     applyTheme();
 }
 
+// 创建单个卡片布局：caption + value + sub 三层垂直结构
 void StatsCardsWidget::setupCard(Card &card, const QString &caption, QBoxLayout *row) {
     card.frame = new QFrame();
     card.frame->setObjectName("cardFrame");
@@ -96,6 +99,7 @@ void StatsCardsWidget::setupCard(Card &card, const QString &caption, QBoxLayout 
     row->addWidget(card.frame, 1);
 }
 
+// 应用卡片 QSS 样式：背景色、边框、圆角、阴影
 void StatsCardsWidget::applyCardStyle(Card &card) {
     auto &t = Theme::instance();
     QString st = QString("QFrame#cardFrame{background:%1;border:1px solid %2;border-radius:%3px;}")
@@ -113,6 +117,7 @@ void StatsCardsWidget::applyCardStyle(Card &card) {
     ShadowEffect::apply(card.frame, ShadowEffect::Card, t.mode() == Theme::Dark);
 }
 
+// 主题切换回调：更新所有卡片样式并刷新数值
 void StatsCardsWidget::applyTheme() {
     applyCardStyle(m_totalCard);
     applyCardStyle(m_countCard);
@@ -124,6 +129,7 @@ void StatsCardsWidget::applyTheme() {
     setPeakDay(m_lastPeak);
 }
 
+// 将分钟数格式化为 Xh Ym 的简洁字符串
 QString StatsCardsWidget::formatMinutes(qint64 min) const {
     if (min <= 0) return "0";
     qint64 h = min / 60;
@@ -133,6 +139,7 @@ QString StatsCardsWidget::formatMinutes(qint64 min) const {
     return QString("%1h %2m").arg(h).arg(m);
 }
 
+// 更新总时长卡片的值
 void StatsCardsWidget::setTotal(qint64 minutes) {
     m_lastTotal = minutes;
     m_totalCard.value->setText(formatMinutes(minutes));
@@ -140,6 +147,7 @@ void StatsCardsWidget::setTotal(qint64 minutes) {
                                           .arg(Theme::instance().textPrimary().name()));
 }
 
+// 更新事件数卡片的值
 void StatsCardsWidget::setCount(int count) {
     m_lastCount = count;
     m_countCard.value->setText(QString::number(count));
@@ -147,6 +155,7 @@ void StatsCardsWidget::setCount(int count) {
                                           .arg(Theme::instance().textPrimary().name()));
 }
 
+// 更新日均时长卡片的值及状态文案（低/正常/高）
 void StatsCardsWidget::setDailyAvg(qint64 minutes) {
     m_lastAvg = minutes;
     m_avgCard.value->setText(formatMinutes(minutes));
@@ -165,6 +174,7 @@ void StatsCardsWidget::setDailyAvg(qint64 minutes) {
     }
 }
 
+// 更新高峰日卡片：显示月/日及中英文星期
 void StatsCardsWidget::setPeakDay(const QDate &date) {
     m_lastPeak = date;
     if (!date.isValid()) {

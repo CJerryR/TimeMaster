@@ -14,6 +14,7 @@ namespace timemaster {
 
 class Database;
 
+// 过去 vs 未来对比面板：双栏显示过去7天和未来7天的事件数/总时长/忙闲变化
 /**
  * 「过去一周 vs 未来一周」对比卡片
  *  - 左：过去 7 天（已完成）
@@ -23,12 +24,15 @@ class Database;
 class ComparisonWidget : public QWidget {
     Q_OBJECT
 public:
+    // 构造函数：创建双栏对比布局（过去/未来）+ 中间对比指示标签
     explicit ComparisonWidget(Database *db, QWidget *parent = nullptr);
-
+    // 查询过去7天和未来7天数据，刷新事件数/总时长/忙闲对比
     void refresh();
 
 private slots:
+    // 主题变更时重新应用对比面板 QSS 样式
     void applyTheme();
+    // 语言切换时更新所有文本标签并刷新数据
     void applyLanguage();
 
 private:

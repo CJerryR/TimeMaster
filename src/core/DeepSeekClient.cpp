@@ -30,6 +30,7 @@ const QString kSystemPromptChat = QStringLiteral(
 );
 } // namespace
 
+// 构造函数：初始化网络管理器
 DeepSeekClient::DeepSeekClient(QObject *parent)
     : QObject(parent),
       m_baseUrl(kDefaultBaseUrl),
@@ -38,18 +39,22 @@ DeepSeekClient::DeepSeekClient(QObject *parent)
     m_nam = new QNetworkAccessManager(this);
 }
 
+// 设置 API Bearer Token
 void DeepSeekClient::setApiKey(const QString &key) {
     m_apiKey = key.trimmed();
 }
 
+// 自定义 API 端点
 void DeepSeekClient::setBaseUrl(const QString &url) {
     m_baseUrl = url.isEmpty() ? QString(kDefaultBaseUrl) : url;
 }
 
+// 设置模型名称
 void DeepSeekClient::setModel(const QString &model) {
     m_model = model.isEmpty() ? QString(kDefaultModel) : model;
 }
 
+// 取消正在进行的网络请求
 void DeepSeekClient::abort() {
     if (m_reply) {
         m_reply->abort();
@@ -58,9 +63,11 @@ void DeepSeekClient::abort() {
     }
 }
 
+// 发送流式聊天请求（支持多轮对话记忆）
 void DeepSeekClient::sendChat(const QString &userMessage,
                               const QString &systemPrompt,
-                              const QString &calendarContext) {
+                              const QString &calendarContext,
+                              const QJsonArray &history) {
     if (!hasApiKey()) {
         emit chatError("未配置 DeepSeek API Key，请到「设置」填写。");
         return;
@@ -78,12 +85,20 @@ void DeepSeekClient::sendChat(const QString &userMessage,
     sys["content"] = systemPrompt.isEmpty() ? kSystemPromptChat : systemPrompt;
     messages.append(sys);
 
-    // 第二条 system：日历上下文（可选）
+    // 第二条 system：日历上下文（可选）。注意这条每轮都会用最新的日历快照
+    // 替换掉，所以放在 history 之前 ── 日历是「世界状态」，不是「对话记忆」。
     if (!calendarContext.isEmpty()) {
         QJsonObject ctx;
         ctx["role"] = "system";
         ctx["content"] = calendarContext;
         messages.append(ctx);
+    }
+
+    // V4.3.3 #1 — 注入历史 user/assistant 交替消息。每条元素已经是
+    // {"role":"user"|"assistant","content":"..."} 形式，ChatPage 在每次
+    // 成功完成一轮后调用方负责把当轮的 user + assistant 追加进去。
+    for (const auto &v : history) {
+        if (v.isObject()) messages.append(v.toObject());
     }
 
     QJsonObject usr;
@@ -94,6 +109,7 @@ void DeepSeekClient::sendChat(const QString &userMessage,
     sendRequestStream(messages, false);
 }
 
+// 解析自然语言日程文本为结构化事件列表
 void DeepSeekClient::parseSchedule(const QString &text) {
     if (!hasApiKey()) {
         emit parseError("未配置 DeepSeek API Key");
@@ -135,6 +151,7 @@ void DeepSeekClient::parseSchedule(const QString &text) {
     sendRequestStream(messages, true);
 }
 
+// 构建并发送流式 POST 请求
 void DeepSeekClient::sendRequestStream(const QJsonArray &messages, bool forParse) {
     QNetworkRequest req{QUrl(m_baseUrl)};
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
@@ -155,12 +172,14 @@ void DeepSeekClient::sendRequestStream(const QJsonArray &messages, bool forParse
     connect(m_reply, &QNetworkReply::finished, this, &DeepSeekClient::onFinished);
 }
 
+// 读取网络响应数据
 void DeepSeekClient::onReadyRead() {
     if (!m_reply) return;
     m_buffer += QString::fromUtf8(m_reply->readAll());
     processBuffer();
 }
 
+// 解析 SSE 事件流缓冲区
 void DeepSeekClient::processBuffer() {
     int idx;
     while ((idx = m_buffer.indexOf('\n')) != -1) {
@@ -188,6 +207,7 @@ void DeepSeekClient::processBuffer() {
     }
 }
 
+// 网络请求完成处理
 void DeepSeekClient::onFinished() {
     if (!m_reply) return;
 
@@ -222,6 +242,7 @@ void DeepSeekClient::onFinished() {
     }
 }
 
+// 从 AI 返回文本中提取 JSON 并解析为 ScheduleSuggestion 列表
 QList<ScheduleSuggestion> DeepSeekClient::parseJsonResponse(const QString &raw) {
     QList<ScheduleSuggestion> list;
     if (raw.isEmpty()) return list;
