@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "Sidebar.h"
 #include "Theme.h"
 #include "IconRenderer.h"

@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "SettingsDialog.h"
 #include "Theme.h"
 #include "FontLoader.h"
@@ -337,6 +342,14 @@ SettingsDialog::SettingsDialog(DeepSeekClient *ai, const QString &dbPath, QWidge
     dbLayout->addWidget(dbInfo);
     root->addWidget(dbBox);
 
+    // V4.3.2 #1 — 设置面板底部展示版本号 + 作者署名
+    auto *versionLbl = new QLabel(I18n::t("settings.version_footer"));
+    versionLbl->setObjectName("VersionFooter");
+    versionLbl->setAlignment(Qt::AlignCenter);
+    versionLbl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    versionLbl->setOpenExternalLinks(true);
+    root->addWidget(versionLbl);
+
     root->addStretch();
 
     // ============== 底部固定按钮行（不随滚动）==============
@@ -561,6 +574,15 @@ void SettingsDialog::applyTheme() {
             outline: 0;
         }
         QPushButton#SecondaryBtn:hover { background-color: %7; }
+
+        /* V4.3.2 #1 — 版本号 footer 弱化处理：text-placeholder 色，小字号 */
+        QLabel#VersionFooter {
+            color: %3;
+            font-size: 12px;
+            font-weight: 400;
+            padding: 14px 0 4px 0;
+            background: transparent;
+        }
     )")
     /*1*/.arg(t.strokeRgba())
     /*2*/.arg(t.textPrimary().name())

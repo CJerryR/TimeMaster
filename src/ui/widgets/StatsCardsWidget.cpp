@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "StatsCardsWidget.h"
 #include "ShadowEffect.h"
 #include "../Theme.h"

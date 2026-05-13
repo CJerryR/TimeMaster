@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "FontLoader.h"
 
 #include <QFontDatabase>

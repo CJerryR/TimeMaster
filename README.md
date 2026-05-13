@@ -2,7 +2,7 @@
 
 一款桌面端日程管理与时间分析工具，基于 Qt 6 + C++17 构建，使用 DeepSeek 模型把自然语言转成结构化日程。
 
-**当前版本：V4.3.1** — 见 [CHANGES_V4_3.md](CHANGES_V4_3.md) 了解本轮改动。
+**当前版本：V4.3.2** — 见 [CHANGES_V4_3.md](CHANGES_V4_3.md) 了解本轮改动。
 
 ![brand-red](https://img.shields.io/badge/brand-%23D97757-D97757) ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![Qt6](https://img.shields.io/badge/Qt-6-41cd52) ![SQLite](https://img.shields.io/badge/storage-SQLite-003B57)
 

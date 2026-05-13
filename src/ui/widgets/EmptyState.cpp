@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "EmptyState.h"
 #include "../Theme.h"
 

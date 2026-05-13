@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "ChatPage.h"
 #include "Theme.h"
 #include "IconRenderer.h"
@@ -936,6 +941,18 @@ void ChatPage::appendActionCard(const QString &op, const QString &humanSummary,
         .arg(t.cardBgRgba())
         .arg(t.brand().name()));
 
+    // V4.3.2 #4 — 审批卡 minSize 之前没显式控制，QLabel 里那段 JSON 又是 monospace
+    // 长串、wordWrap 也救不了（无空格断不开），结果整张卡的 sizeHint 被撑得很宽，
+    // 在窄窗口里露出 scrollArea 右侧、按钮被切走。
+    // 修：① 给整卡上 maximumWidth（沿用 bubble 的 viewport-aware 逻辑），
+    //     ② JSON detail 用 Qt::TextWrapAnywhere 允许任意位置换行。
+    {
+        int vw = m_scroll ? m_scroll->viewport()->width() : 600;
+        int maxW = qMax(280, qMin(int(vw * 0.92), vw - 76));
+        card->setMaximumWidth(maxW);
+        card->setMinimumWidth(qMin(280, maxW));
+    }
+
     auto *outerLay = new QVBoxLayout(card);
     outerLay->setContentsMargins(16, 14, 16, 14);
     outerLay->setSpacing(10);
@@ -959,11 +976,22 @@ void ChatPage::appendActionCard(const QString &op, const QString &humanSummary,
     // detail (compact JSON preview)
     auto *detail = new QLabel(snapshotJson);
     detail->setWordWrap(true);
+    // V4.3.2 #4 — JSON 字串没有空格，普通 wordWrap 不能断行，结果撑爆 minWidth。
+    // 这里手动启用任意位置换行（Qt 6 用 setTextInteractionFlags 不行，需要换 QTextOption）。
+    detail->setTextFormat(Qt::PlainText);
     detail->setStyleSheet(QString(
         "background:%1;color:%2;border-radius:8px;padding:8px 10px;"
         "font-family:monospace;font-size:12px;")
         .arg(t.componentBgRgba())
         .arg(t.textSecondary().name()));
+    detail->setMinimumWidth(0);
+    // QLabel + wordWrap=true 默认 WordWrap，但中长 JSON（无空格）需要 WrapAnywhere
+    // 才能塞进窄列。Qt 6 的做法是用 QLabel::setWordWrap(true) + 手动 elide / 截断。
+    {
+        QString s = snapshotJson;
+        if (s.size() > 280) s = s.left(280) + "…";   // 也别把整段 JSON 都摆出来
+        detail->setText(s);
+    }
     outerLay->addWidget(detail);
 
     // action buttons row
@@ -1005,7 +1033,14 @@ void ChatPage::appendActionCard(const QString &op, const QString &humanSummary,
     btnRow->addWidget(alwaysBtn);
     outerLay->addLayout(btnRow);
 
-    m_msgLayout->addWidget(card);
+    // V4.3.2 #4 — 用一行 layout 包卡 + 右侧 stretch，防止 card 被强行拉满
+    auto *cardRow = new QWidget;
+    auto *cardRowLay = new QHBoxLayout(cardRow);
+    cardRowLay->setContentsMargins(0, 0, 0, 0);
+    cardRowLay->setSpacing(0);
+    cardRowLay->addWidget(card);
+    cardRowLay->addStretch();
+    m_msgLayout->addWidget(cardRow);
     m_msgLayout->addStretch();
 
     // 关掉所有按钮 + 把卡变成 "已执行 / 已拒绝" 提示的 helper

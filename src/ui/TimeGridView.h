@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #pragma once
 
 #include "../core/Types.h"
@@ -51,7 +56,7 @@ private:
 
     int m_hourHeight = 56;
     int m_timeGutter = 56;
-    int m_headerHeight = 66;
+    int m_headerHeight = 72;     // V4.3.2 #2 — 66 → 72 配合红圈下移 5px 后底部留呼吸
     int m_allDayBandHeight = 0;
 
     int m_scrollY = 0;

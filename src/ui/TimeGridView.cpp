@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "TimeGridView.h"
 #include "Theme.h"
 #include "FontLoader.h"
@@ -185,10 +190,9 @@ QList<TimeGridView::EventLayout> TimeGridView::layoutDayEvents(const QDate &date
 
         int top = int(startM / 60.0 * m_hourHeight);
         int hgt = int((endM - startM) / 60.0 * m_hourHeight);
-        // V4.3 #6 / V4.4 #3 — 短日程显示最小高度。V4.3 设为 36，但 #3 把
-        // 标题区域顶部 padding 从 4 提到 7，36 已经放不下"标题+时间"两行，
-        // 这里再提到 44：7 (top) + 22 (title) + 14 (time) + 1 (bottom) = 44。
-        if (hgt < 44) hgt = 44;
+        // V4.3.2 #3 — 文字起点上移 14px 后，最小高度配套调整 44 → 30：
+        // 0 padding + 18 (title) + 14 (time row) ≈ 32，留 -2 容差，30 视觉上足够。
+        if (hgt < 30) hgt = 30;
 
         double colW = double(dayCol.width() - 4) / totalCols;
         int x = dayCol.left() + 2 + int(col * colW);
@@ -261,7 +265,8 @@ void TimeGridView::paintEvent(QPaintEvent *) {
             p.setFont(fnum);
 
             int diam = 28;  // V4.2: shrunk from 40 -> 28
-            int circleTop = 32;  // V4.2: 6px gap below weekday label
+            int circleTop = 37;  // V4.3.2 #2 — 整体下移 5px (32 → 37) 让红圈
+                                 // 不再贴近上方"周X"文字，呼吸感更舒服
             QRect circle(col.center().x() - diam / 2, circleTop, diam, diam);
             p.setBrush(theme.brand());
             p.setPen(Qt::NoPen);
@@ -275,7 +280,7 @@ void TimeGridView::paintEvent(QPaintEvent *) {
             f2.setWeight(QFont::DemiBold);
             p.setFont(f2);
             p.setPen((dowIdx == 0 || dowIdx == 6) ? theme.danger() : theme.textPrimary());
-            QRect dR(col.left(), 32, col.width(), 28);
+            QRect dR(col.left(), 37, col.width(), 28);  // V4.3.2 #2 — 同步红圈 +5
             p.drawText(dR, Qt::AlignCenter, QString::number(d.day()));
         }
     }
@@ -358,25 +363,29 @@ void TimeGridView::paintEvent(QPaintEvent *) {
         barPath.addRoundedRect(bar, 1.5, 1.5);
         p.fillPath(barPath, c.text);
 
-        // V4.4 #3 — 标题文本框顶部 padding 4 → 7，给中文字符的顶部笔画
-        // （比如"接"的提手旁、"深"的氵）留出呼吸空间。配套地标题高度
-        // 18 → 22，避免 descender 被裁。
-        QRect tr(r.left() + 10, r.top() + 7, r.width() - 14, r.height() - 10);
+        // V4.3.2 #3 — 日程块"文字起始位置向上 14px"：撤销 V4.4 #3 加的 padding，
+        // 文字回到贴近色块顶部的视觉位置。配套：
+        //   · 标题高度 22 → 18（V4.3 原值），AlignTop 让 cap-line 几乎贴 r.top()，
+        //     Qt 的 AlignTop 语义不会让 ascender 越出 rect 顶边，所以不会触发
+        //     V4.4 #3 修的中文笔画裁切。
+        //   · 第二行起点 22 → 14，配合标题区缩回；视觉上时间行整体上移约 15px。
+        //   · 最小事件高度同步：44 → 30（见 layoutDayEvents 里的最小值 clamp）。
+        QRect tr(r.left() + 10, r.top(), r.width() - 14, r.height() - 2);
         p.setPen(c.text);
 
         QFont f = font(); f.setPointSize(11); f.setWeight(QFont::DemiBold);
         p.setFont(f);
         QFontMetrics fm(f);
         QString title = fm.elidedText(er.event.title, Qt::ElideRight, tr.width());
-        p.drawText(QRect(tr.left(), tr.top(), tr.width(), 22),
+        p.drawText(QRect(tr.left(), tr.top(), tr.width(), 18),
                    Qt::AlignLeft | Qt::AlignTop, title);
 
         if (!er.event.allDay) {
-            // V4.4 #3 — 标题用 22px 后，第二行（时间）起点上移 4px
-            int yCursor = tr.top() + 22;
+            // V4.3.2 #3 — 第二行起点从 +22 改到 +14，整体上移
+            int yCursor = tr.top() + 14;
             const int kRowH = 14;
 
-            if (r.height() > 32) {
+            if (r.height() > 24) {
                 QFont ft = font();
                 ft.setFamily(FontLoader::numericFamily());
                 ft.setPointSize(9);

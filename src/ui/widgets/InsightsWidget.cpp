@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "InsightsWidget.h"
 #include "../Theme.h"
 #include "../../core/Database.h"

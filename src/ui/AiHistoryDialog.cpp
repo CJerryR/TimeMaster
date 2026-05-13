@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "AiHistoryDialog.h"
 #include "Theme.h"
 #include "IconRenderer.h"

@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "HorizontalBarChart.h"
 #include "../Theme.h"
 #include "../../core/I18n.h"

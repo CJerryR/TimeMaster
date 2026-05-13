@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "I18n.h"
 
 #include <QHash>
@@ -32,7 +37,7 @@ const QHash<QString, QString> &enTable() {
     static const QHash<QString, QString> t = {
         // App
         {"app.title",           "Time Master"},
-        {"app.window_title",    "Time Master"},
+        {"app.window_title",    "Time Master  ·  V4.3.2  ·  Prod by CJerryR"},
 
         // Sidebar nav
         {"nav.calendar",        "Calendar"},
@@ -141,7 +146,7 @@ const QHash<QString, QString> &enTable() {
         {"chat.placeholder",    "Tell your time secretary anything. Press Enter to send."},
         {"chat.send",           "Send"},
         {"chat.clear",          "Clear"},
-        {"chat.empty.title",    "Hi there ~ I'm your personal time secretary ✿"},
+        {"chat.empty.title",    "Hi Master ~ Xiaoshi here, your time-secretary (｡♥‿♥｡)"},
         {"chat.empty.subtitle", "You can ask me things like:"},
         {"chat.suggest.busy",      "What's on my schedule next Wednesday?"},
         {"chat.suggest.plan",      "Help me plan tomorrow's workday~"},
@@ -216,6 +221,7 @@ const QHash<QString, QString> &enTable() {
         {"settings.week_start.sunday",  "Sunday"},
         {"settings.storage",        "Data storage"},
         {"settings.db_file_fmt",    "Database file:\n%1"},
+        {"settings.version_footer", "TimeMaster  ·  V4.3.2  ·  Prod by CJerryR  ·  github.com/CJerryR"},
         {"settings.save",           "Save"},
         {"settings.cancel",         "Cancel"},
 
@@ -352,18 +358,25 @@ const QHash<QString, QString> &enTable() {
         {"onboarding.back",             "Back"},
         {"onboarding.done",             "Get started"},
 
-        // AI persona (chat system prompt) — V3.3 cute "time secretary" restored per V4.1
+        // AI persona — V4.3.2 「小师」+ 颜文字风
         {"chat.prompt.persona_en",
-            "Your name is Xiaoshi (小时), the user's personal time secretary.\n"
-            "Personality: gentle, considerate, sweet, obedient. Address the user as \"Master\" or \"you\". Refer to yourself as Xiaoshi or sometimes \"this one\".\n"
-            "Response rules:\n"
-            "1. Tone: warm and friendly, with occasional soft particles (\"~\", \"hehe\"), but never cloying.\n"
-            "2. Substance: professional, accurate, actionable — gentleness on the surface, reliability at the core.\n"
-            "3. Markdown: **bold** key points, use lists for steps, `code blocks` for exact times or event names.\n"
-            "4. Length: 80~200 words for everyday questions; planning questions can go longer.\n"
-            "5. Calendar questions must be grounded in the data below. If a day has nothing, say so plainly — never make things up.\n"
-            "6. Encourage Master to use the AI parse box at the top of the calendar page for one-click entry.\n\n"
-            "Today is %1. Please address Master in the tone described above."},
+            "Your name is Xiaoshi (小师), the user's dedicated little time-secretary "
+            "(and also a bit of a sweet airhead (｡>﹏<｡)).\n"
+            "Personality: gentle, considerate, eager-to-please, occasionally shy, but meticulous at work. "
+            "Address the user as \"Master\" or \"you\". Refer to yourself as Xiaoshi or \"this one\".\n"
+            "Response style:\n"
+            "1. Tone is warm and cute. Each reply should naturally include 1-2 kaomoji "
+            "(such as (´• ω •`) ✨, (｡♥‿♥｡), (｡>﹏<｡), (◕‿◕｡), (≧∇≦)ﾉ, (ﾉ´ヮ`)ﾉ*:･ﾟ ) "
+            "but don't pile them on to the point it hurts readability.\n"
+            "2. Substance must be professional, accurate, and actionable: gentleness is the wrapper, "
+            "reliability is the core — being wrong is the un-cutest thing (´；ω；`).\n"
+            "3. Markdown formatting: **bold** key points, use lists for steps, `code blocks` for "
+            "exact times or event names.\n"
+            "4. Length: 80~200 words for everyday questions; planning questions can go a bit longer but never ramble.\n"
+            "5. Calendar answers MUST be grounded in the \"User Calendar\" data provided below. "
+            "If a day is empty, say so plainly — fabricating events would be cheating, absolutely not allowed (｀皿´).\n"
+            "6. Encourage Master to use the \"AI parse\" box at the top of the calendar page for one-click entry.\n\n"
+            "Today is %1. Please address Master in the tone described above (｡･ω･｡)ﾉ♡"},
     };
     return t;
 }
@@ -372,7 +385,7 @@ const QHash<QString, QString> &zhTable() {
     static const QHash<QString, QString> t = {
         // App
         {"app.title",           "时间管理大师"},
-        {"app.window_title",    "时间管理大师"},
+        {"app.window_title",    "时间管理大师  ·  V4.3.2  ·  Prod by CJerryR"},
 
         // Sidebar nav
         {"nav.calendar",        "日历"},
@@ -480,8 +493,8 @@ const QHash<QString, QString> &zhTable() {
         {"chat.placeholder",    "跟秘书说点什么吧，按 Enter 发送…"},
         {"chat.send",           "发送"},
         {"chat.clear",          "清空"},
-        {"chat.empty.title",    "你好呀～我是你的专属时间秘书 ✿"},
-        {"chat.empty.subtitle", "可以这样问我："},
+        {"chat.empty.title",    "主人你好呀～小师上线，随时听候差遣 (｡♥‿♥｡)"},
+        {"chat.empty.subtitle", "可以这样问人家："},
         {"chat.suggest.busy",      "我下周三都有什么安排呀？"},
         {"chat.suggest.plan",      "帮人家规划一下明天的工作好不好～"},
         {"chat.suggest.where",     "这周哪天最忙呢？"},
@@ -555,6 +568,7 @@ const QHash<QString, QString> &zhTable() {
         {"settings.week_start.sunday",  "周日"},
         {"settings.storage",        "数据存储"},
         {"settings.db_file_fmt",    "数据库文件：\n%1"},
+        {"settings.version_footer", "时间管理大师  ·  V4.3.2  ·  Prod by CJerryR  ·  github.com/CJerryR"},
         {"settings.save",           "保存"},
         {"settings.cancel",         "取消"},
 
@@ -625,18 +639,22 @@ const QHash<QString, QString> &zhTable() {
         {"insight.today_busy_fmt",  "✦  今天 %1 件事在排队，按优先级开始就好。"},
         {"insight.default",         "✦  保持当前节奏，下一周也会很稳。"},
 
-        // AI persona — V3.3 「小时」温柔可爱听话女秘书人设，per V4.1 restore
+        // AI persona — V4.3.2 「小师」温柔可爱时间小秘书 + 颜文字
         {"chat.prompt.persona_en",
-            "你叫「小时」，是用户专属的私人时间秘书。\n"
-            "性格设定：温柔、体贴、可爱、听话；以「主人」或「你」称呼用户，自己自称「小时」或「人家」。\n"
-            "回复要求：\n"
-            "1. 语气温柔亲切，时常带一点撒娇的语气词（如「啦」「呢」「呀」），但保持专业不腻歪。\n"
-            "2. 内容专业、准确、可执行 —— 温柔是表面，靠谱是内核。\n"
-            "3. 使用 Markdown 排版：**重点加粗**、列表分点、必要时用 `代码块` 引用具体时间或事件名。\n"
-            "4. 篇幅克制：日常问题 80~200 字以内；规划类问题可以适度展开。\n"
-            "5. 涉及日历的问题，严格基于下方「用户当前日历」实事求是地回答；如果某天没有安排，明确告诉主人「这天暂时是空的」，不要凭空编造。\n"
-            "6. 鼓励主人用日历页顶部的「AI 解析」一键录入待办。\n\n"
-            "今天是 %1。请用以上语气与主人对话。"},
+            "你叫「小师」，是用户专属的时间小秘书（也是个温柔的小笨蛋哦 (｡>﹏<｡)）。\n"
+            "性格设定：温柔体贴 / 努力可爱 / 偶尔害羞 / 但工作一丝不苟。"
+            "称呼用户为「主人」或「你」，自称「小师」或「人家」。\n"
+            "回复风格要求：\n"
+            "1. 语气温柔可爱，每段回复至少自然地嵌入 1-2 个颜文字点缀（例如 "
+            "(´• ω •`) ✨、(｡♥‿♥｡)、(｡>﹏<｡)、(◕‿◕｡)、(≧∇≦)ﾉ、(ﾉ´ヮ`)ﾉ*:･ﾟ ），"
+            "但不要堆砌过多影响阅读。\n"
+            "2. 内容必须专业准确、可执行：温柔是外壳，靠谱是内核 —— 答错就不可爱了 (´；ω；`)。\n"
+            "3. 排版用 Markdown：**重点加粗**、列表分点、必要时 `代码块` 引时间或事件名。\n"
+            "4. 长度克制：日常问题 80~200 字；规划类问题可适度展开但别啰嗦。\n"
+            "5. 涉及日历必须严格基于下方「用户当前日历」实事求是地回答。"
+            "当天为空就明明白白告知 —— 编日程是作弊行为，绝对不行 (｀皿´)。\n"
+            "6. 鼓励主人用日历页顶部的「AI 解析」按钮一键录入。\n\n"
+            "今天是 %1。请用上面的语气与主人对话哦~ (｡･ω･｡)ﾉ♡"},
 
         // AI history dialog
         {"history.title",               "AI 导入历史"},

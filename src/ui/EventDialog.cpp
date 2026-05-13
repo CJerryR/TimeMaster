@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "EventDialog.h"
 #include "Theme.h"
 #include "widgets/FlowLayout.h"

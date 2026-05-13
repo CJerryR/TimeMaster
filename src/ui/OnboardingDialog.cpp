@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "OnboardingDialog.h"
 #include "Theme.h"
 #include "../core/DeepSeekClient.h"

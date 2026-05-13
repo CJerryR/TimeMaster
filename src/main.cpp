@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "ui/MainWindow.h"
 #include "core/Database.h"
 #include "core/DeepSeekClient.h"

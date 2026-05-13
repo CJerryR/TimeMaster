@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "MainWindow.h"
 #include "Sidebar.h"
 #include "CalendarPage.h"

@@ -1,3 +1,8 @@
+//---------------------------Auther---------------------------
+//Written by CJerryR
+//https://github.com/CJerryR
+//------------------------------------------------------------
+
 #include "AiResultsDialog.h"
 #include "EventDialog.h"
 #include "Theme.h"
